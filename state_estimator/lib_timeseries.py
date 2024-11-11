@@ -94,7 +94,7 @@ def system_measurements(path, meas_file, std_file, Nodes, Lines, add_noise = Fal
                 'line': None,
                 'type': modified_item[0],
                 'value': data[item],
-                'std': 0.01#std_data[item]
+                'std': 0.0000001#std_data[item]
                 })           
         # Si se trata de una medida en una línea
         if len(modified_item) == 3:
