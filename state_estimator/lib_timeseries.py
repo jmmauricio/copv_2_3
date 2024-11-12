@@ -49,7 +49,7 @@ def system_topology(file):
                 })
             
     # Construimos la lista de trasnformadores    
-    index_lines = index
+    index_lines = index + 1
     for index, item in enumerate(data['transformers']):
         Lines.append({
             'id': index_lines + index,

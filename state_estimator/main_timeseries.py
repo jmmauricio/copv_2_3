@@ -2,10 +2,10 @@ from lib_timeseries import system_topology, system_measurements, system_constrai
 import lib
 
 # Obtenemos la topología del parque
-Nodes, Lines = system_topology('pv_2_3.json')
+Nodes, Lines = system_topology('../data/pv_2_3.json')
 
 # Para cada instante de tiempo
-path = 'pv_2_3_data/pv_2_3_180_'
+path = '../data/pv_2_3_180_'
 for hour in ['08', '09', '10', '11', '12', '13', '14']:
     for minute in ['00', '15', '30', '45']:
         extended_path = path + hour + '_' + minute + '_pf_090neg/'
