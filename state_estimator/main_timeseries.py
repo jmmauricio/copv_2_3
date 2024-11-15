@@ -5,10 +5,11 @@ import lib
 Nodes, Lines = system_topology('../data/pv_2_3.json')
 
 # Para cada instante de tiempo
-path = '../data/pv_2_3_180_'
+path = ['../data/pv_2_3_180_', '../data_Cati/pv_2_3_180_']
 for hour in ['08', '09', '10', '11', '12', '13', '14']:
     for minute in ['00', '15', '30', '45']:
-        extended_path = path + hour + '_' + minute + '_pf_090neg/'
+        extended_path = [path[0] + hour + '_' + minute + '_pf_090neg/',
+                         path[1] + hour + '_' + minute + '_pf_090neg/']
         print('Evaluando ' + hour + '_' + minute + '_pf_090neg')
         
         

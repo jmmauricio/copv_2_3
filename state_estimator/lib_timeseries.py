@@ -68,8 +68,11 @@ def system_topology(file):
 def system_measurements(path, meas_file, std_file, Nodes, Lines, add_noise = False):
     
     # Leemos los datos de los ficheros
-    with open(path + meas_file, 'r') as f:
+    with open(path[0] + meas_file, 'r') as f:
         data = json.load(f)
+    with open(path[1] + std_file, 'r') as f:
+        std_data = json.load(f)
+    std_data = {key.replace("POI_MV", "POIMV"): value for key, value in std_data.items()}
     # with open(path + std_file, 'r') as f:
     #     contenido = f.read()
     # contenido = contenido.replace('{', '').replace('}', '')
@@ -94,7 +97,7 @@ def system_measurements(path, meas_file, std_file, Nodes, Lines, add_noise = Fal
                 'line': None,
                 'type': modified_item[0],
                 'value': data[item],
-                'std': 0.0000001#std_data[item]
+                'std': std_data[item]
                 })           
         # Si se trata de una medida en una línea
         if len(modified_item) == 3:
@@ -111,7 +114,7 @@ def system_measurements(path, meas_file, std_file, Nodes, Lines, add_noise = Fal
                 'line': id_l,
                 'type': modified_item[0],
                 'value': data[item]**2 if modified_item[0] == 'I' else data[item],
-                'std': 0.01#std_data[item]
+                'std': 2*std_data[item]*data[item] if modified_item[0] == 'I' else std_data[item],
                 })
         index_meas += 1
         
