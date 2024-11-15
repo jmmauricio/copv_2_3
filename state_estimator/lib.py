@@ -66,9 +66,18 @@ class grid:
             print(f'Iteration {iteration}, residual: {np.linalg.norm(x - x_old):.8f}')     
             iteration += 1
         self.compute_mags()        
-        # self.std_sol = self.H.dot(np.linalg.inv(self.G).dot(self.H.T))
+        # Std of the result
+        if len(self.constrained_meas) == 0:
+            self.std_sol = self.H.dot(np.linalg.inv(self.G).dot(self.H.T))
+        else:
+            A = np.block([[self.G, self.C],
+                          [self.C.T, np.zeros((self.C.shape[1], self.C.shape[1]))]])
+            U = np.linalg.inv(A)
+            E1 = U[:self.G.shape[0], :self.G.shape[1]]
+            Sxz = E1.dot(self.H.T).dot(self.W)
+            self.std_sol = (np.eye(self.W.shape[0]) - self.H.dot(Sxz)).dot(np.linalg.inv(self.W)).dot( (np.eye(self.W.shape[0]) - self.H.dot(Sxz)).T )
         print('')
-        return res, sol, H
+        return res, sol, H, np.sqrt(np.diag(self.std_sol))
         
     def compute_mags(self):
         for node in self.nodes:
@@ -173,7 +182,6 @@ class grid:
         self.c_res = [m.value - m.h() for m in self.constrained_meas] 
         
     def norm_res(self):
-        self.std_sol = self.H.dot(np.linalg.inv(self.G).dot(self.H.T))
         M = self.R - self.std_sol
         self.res_norm = [item[0]/np.sqrt(item[1]) for item in zip(np.abs(self.res), np.diag(np.abs(M)))]
         

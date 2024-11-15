@@ -73,14 +73,7 @@ def system_measurements(path, meas_file, std_file, Nodes, Lines, add_noise = Fal
     with open(path[1] + std_file, 'r') as f:
         std_data = json.load(f)
     std_data = {key.replace("POI_MV", "POIMV"): value for key, value in std_data.items()}
-    # with open(path + std_file, 'r') as f:
-    #     contenido = f.read()
-    # contenido = contenido.replace('{', '').replace('}', '')
-    # lineas = contenido.split('\n')
-    # lineas = [linea.strip() for linea in lineas if linea.strip()]
-    # contenido_corregido = ',\n'.join(lineas)
-    # contenido_corregido = '{' + contenido_corregido + '}'
-    # std_data = json.loads(contenido_corregido)
+    
     
     # Construimos la lista de medidas
     Meas = list()
@@ -96,7 +89,7 @@ def system_measurements(path, meas_file, std_file, Nodes, Lines, add_noise = Fal
                 'node': N,
                 'line': None,
                 'type': modified_item[0],
-                'value': data[item],
+                'value': data[item] if add_noise == False else data[item] + random.gauss(0, std_data[item]),
                 'std': std_data[item]
                 })           
         # Si se trata de una medida en una línea
@@ -107,18 +100,23 @@ def system_measurements(path, meas_file, std_file, Nodes, Lines, add_noise = Fal
                     break
                 if l['From'] == modified_item[2] and l['To'] == modified_item[1]:
                     id_l = -l['id']
-                    break               
+                    break     
+            value = data[item]**2 if modified_item[0] == 'I' else data[item]
+            if add_noise and modified_item[0] != 'I':
+                value += random.gauss(0, std_data[item])            
+            if add_noise and modified_item[0] == 'I':
+                value += random.gauss(0, 2*std_data[item]*data[item])
             Meas.append({
                 'id': index_meas,
                 'node': None,
                 'line': id_l,
                 'type': modified_item[0],
-                'value': data[item]**2 if modified_item[0] == 'I' else data[item],
+                'value': value,
                 'std': 2*std_data[item]*data[item] if modified_item[0] == 'I' else std_data[item],
                 })
         index_meas += 1
         
-    return Meas
+    return Meas, data, std_data
     
 
 def system_constraints(Nodes):      
