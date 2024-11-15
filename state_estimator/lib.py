@@ -66,7 +66,12 @@ class grid:
             print(f'Iteration {iteration}, residual: {np.linalg.norm(x - x_old):.8f}')     
             iteration += 1
         self.compute_mags()        
-        # self.std_sol = self.H.dot(np.linalg.inv(self.G).dot(self.H.T))
+        
+        
+        # A = np.block([[self.G, self.C],
+        #               [self.C.T, np.zeros((self.C.shape[1], self.C.shape[1]))]])
+        # Ainv = np.linalg.inv(A)        
+        # self.std_sol = self.H.dot(np.linalg.inv(self.G).dot(self.H.T)) # SACAR DE RESULTADO!!!!!
         print('')
         return res, sol, H
         

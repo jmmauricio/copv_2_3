@@ -93,7 +93,7 @@ def system_measurements(path, meas_file, std_file, Nodes, Lines, add_noise = Fal
                 'node': N,
                 'line': None,
                 'type': modified_item[0],
-                'value': data[item],
+                'value': data[item], #+ random.gauss(0, std_data[item]),
                 'std': 0.0000001#std_data[item]
                 })           
         # Si se trata de una medida en una línea
@@ -110,8 +110,8 @@ def system_measurements(path, meas_file, std_file, Nodes, Lines, add_noise = Fal
                 'node': None,
                 'line': id_l,
                 'type': modified_item[0],
-                'value': data[item]**2 if modified_item[0] == 'I' else data[item],
-                'std': 0.01#std_data[item]
+                'value': data[item]**2 if modified_item[0] == 'I' else data[item], # 2*sigma*measurement 
+                'std': 0.01#std_data[item] # 2*sigma*measurement 
                 })
         index_meas += 1
         
