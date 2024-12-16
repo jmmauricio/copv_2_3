@@ -1,6 +1,7 @@
 # Libraries
 import numpy as np
 import pandas as pd
+import copy
 
 # Classes for grid generation
 class grid:
@@ -9,6 +10,7 @@ class grid:
         self.lines = self.add_lines(lines, self.nodes)   
         self.n = len(self.nodes)*2 - 1
         self.meas = self.add_meas(meas, self.nodes, self.lines, self.n)
+        self.original_meas = copy.deepcopy(self.meas)
         self.H = np.zeros((len(self.meas), self.n))
         self.Y = self.build_Y()
         self.constraints = constraints
@@ -37,38 +39,60 @@ class grid:
             meas_list.append(measurement(item['id'], item['node'], item['line'], item['type'], item['value'], item['std'], nodes, lines, n))
         return meas_list
     
-    def state_estimation(self, tol = 1e-6, niter = 100, Huber = False, lmb = None):
-        x = np.array([0 for _ in range(int((self.n-1)/2))] + [1 for _ in range(int((self.n-1)/2)+1)])
-        x_old = x*10
-        self.build_W()
-        self.assign(x)
-        res, sol, H = list(), list(), list()                
-        self.compute_res(x)    
-        self.build_Q(Huber = Huber, lmb = lmb)
-        self.build_H(x)
-        H.append(self.H)
-        self.build_G(Huber = Huber)
-        res.append(self.res)   
-        sol.append(x)
-        H.append(self.H)
-        iteration = 1
-        print('')
-        while (np.max(np.abs(x - x_old)) > tol) and (iteration < niter):
-            x_old = x
-            x = self.update_x(x, Huber = Huber)
-            sol.append(x)             
-            self.compute_res(x)   
-            self.build_Q(Huber = Huber, lmb = lmb)     
-            res.append(self.res)
+    def state_estimation(self, tol = 1e-6, niter = 100, Huber = False, lmb = None, rn = False):
+        cond = True
+        while (cond):
+            x = np.array([0 for _ in range(int((self.n-1)/2))] + [1 for _ in range(int((self.n-1)/2)+1)])
+            x_old = x*10
+            self.build_W()
+            self.assign(x)
+            res, sol, H = list(), list(), list()                
+            self.compute_res(x)    
+            self.build_Q(Huber = Huber, lmb = lmb)
             self.build_H(x)
             H.append(self.H)
             self.build_G(Huber = Huber)
-            print(f'Iteration {iteration}, residual: {np.linalg.norm(x - x_old):.8f}')     
-            iteration += 1
-        self.compute_mags()        
-        # self.std_sol = self.H.dot(np.linalg.inv(self.G).dot(self.H.T))
+            res.append(self.res)   
+            sol.append(x)
+            H.append(self.H)
+            iteration = 1
+            print('')
+            while (np.max(np.abs(x - x_old)) > tol) and (iteration < niter):
+                x_old = x
+                x = self.update_x(x, Huber = Huber)
+                sol.append(x)             
+                self.compute_res(x)   
+                self.build_Q(Huber = Huber, lmb = lmb)     
+                res.append(self.res)
+                self.build_H(x)
+                H.append(self.H)
+                self.build_G(Huber = Huber)
+                print(f'Iteration {iteration}, residual: {np.linalg.norm(x - x_old):.8f}')     
+                iteration += 1
+            self.compute_mags()        
+            # Std of the result
+            if len(self.constrained_meas) == 0:
+                self.std_sol = self.H.dot(np.linalg.inv(self.G).dot(self.H.T))
+            else:
+                A = np.block([[self.G, self.C],
+                              [self.C.T, np.zeros((self.C.shape[1], self.C.shape[1]))]])
+                U = np.linalg.inv(A)
+                E1 = U[:self.G.shape[0], :self.G.shape[1]]
+                Sxz = E1.dot(self.H.T).dot(self.W)
+                self.std_sol = (np.eye(self.W.shape[0]) - self.H.dot(Sxz)).dot(np.linalg.inv(self.W)).dot( (np.eye(self.W.shape[0]) - self.H.dot(Sxz)).T )
+                # np.linalg.inv(self.W) - self.H.dot(E1).dot(self.H.T)
+            self.std_sol = np.sqrt(np.diag(self.std_sol))
+            self.norm_res()
+            if rn == False:
+                cond = False
+            else:
+                max_index = np.argmax(self.res_norm)
+                if self.res_norm[max_index] > 3:
+                    self.meas.pop(max_index)
+                else:
+                    cond = False
         print('')
-        return res, sol, H
+        return res, sol, H, self.std_sol 
         
     def compute_mags(self):
         for node in self.nodes:
@@ -173,7 +197,6 @@ class grid:
         self.c_res = [m.value - m.h() for m in self.constrained_meas] 
         
     def norm_res(self):
-        self.std_sol = self.H.dot(np.linalg.inv(self.G).dot(self.H.T))
         M = self.R - self.std_sol
         self.res_norm = [item[0]/np.sqrt(item[1]) for item in zip(np.abs(self.res), np.diag(np.abs(M)))]
         

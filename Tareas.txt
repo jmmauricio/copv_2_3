@@ -1,0 +1,4 @@
+- Correr WLS:
+	- Sacar la desviación típica de estimaciones
+	- Meter ataques: desviación tipica por 5 (P_LV0101) -> Residuos normalizados
+	- Sin ataques: quedarme con el resiudo más grande. Fijar ese valor como Lambda.
