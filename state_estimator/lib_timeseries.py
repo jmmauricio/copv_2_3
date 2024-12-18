@@ -16,40 +16,45 @@ def system_topology(file):
     
     # Construimos la lista de nodos
     Nodes = list()
-    index = 1
-    for index, item in enumerate(data['buses']):
-        Nodes.append({'name': item['name'], 
-                      'id': index, 
-                      'B': 0} )
+    index = 0
+    for item in data['buses']:
+        if item['name'] != 'BESS':
+            Nodes.append({'name': item['name'], 
+                          'id': index, 
+                          'B': 0} )
+            index += 1
         
     # Construimos la lista de líneas
     Lines = list()
-    for index, item in enumerate(data['lines']):
-        if 'R_pu' in item.keys():
-            Lines.append({
-                'id': index,
-                'From': item['bus_j'],
-                'To': item['bus_k'],
-                'R': item['R_pu']*S_base_syst/(item['S_mva']*1e6),
-                'X': item['X_pu']*S_base_syst/(item['S_mva']*1e6),
-                'B': item['Bs_pu']*(item['S_mva']*1e6/S_base_syst)/2, 
-                'Transformer': False,
-                'rt': 1
-                })
-        else:
-            Lines.append({
-                'id': index,
-                'From': item['bus_j'],
-                'To': item['bus_k'],
-                'R': item['R_km']*item['km']/Z_base,
-                'X': item['X_km']*item['km']/Z_base,
-                'B': item['Bs_km']*item['km']*Z_base/2, 
-                'Transformer': False,
-                'rt': 1
-                })
+    index = 0
+    for item in data['lines']:        
+        if item['bus_j'] != 'BESS' and item['bus_k'] != 'BESS':
+            if 'R_pu' in item.keys():
+                Lines.append({
+                    'id': index,
+                    'From': item['bus_j'],
+                    'To': item['bus_k'],
+                    'R': item['R_pu']*S_base_syst/(item['S_mva']*1e6),
+                    'X': item['X_pu']*S_base_syst/(item['S_mva']*1e6),
+                    'B': item['Bs_pu']*(item['S_mva']*1e6/S_base_syst)/2, 
+                    'Transformer': False,
+                    'rt': 1
+                    })
+            else:
+                Lines.append({
+                    'id': index,
+                    'From': item['bus_j'],
+                    'To': item['bus_k'],
+                    'R': item['R_km']*item['km']/Z_base,
+                    'X': item['X_km']*item['km']/Z_base,
+                    'B': item['Bs_km']*item['km']*Z_base/2, 
+                    'Transformer': False,
+                    'rt': 1
+                    })            
+            index += 1
             
     # Construimos la lista de trasnformadores    
-    index_lines = index + 1
+    index_lines = index 
     for index, item in enumerate(data['transformers']):
         Lines.append({
             'id': index_lines + index,

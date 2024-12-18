@@ -1,6 +1,7 @@
 # Libraries
 import numpy as np
 import pandas as pd
+import copy
 
 # Classes for grid generation
 class grid:
@@ -9,6 +10,7 @@ class grid:
         self.lines = self.add_lines(lines, self.nodes)   
         self.n = len(self.nodes)*2 - 1
         self.meas = self.add_meas(meas, self.nodes, self.lines, self.n)
+        self.original_meas = meas
         self.H = np.zeros((len(self.meas), self.n))
         self.Y = self.build_Y()
         self.constraints = constraints
@@ -37,47 +39,89 @@ class grid:
             meas_list.append(measurement(item['id'], item['node'], item['line'], item['type'], item['value'], item['std'], nodes, lines, n))
         return meas_list
     
-    def state_estimation(self, tol = 1e-6, niter = 100, Huber = False, lmb = None):
-        x = np.array([0 for _ in range(int((self.n-1)/2))] + [1 for _ in range(int((self.n-1)/2)+1)])
-        x_old = x*10
-        self.build_W()
-        self.assign(x)
-        res, sol, H = list(), list(), list()                
-        self.compute_res(x)    
-        self.build_Q(Huber = Huber, lmb = lmb)
-        self.build_H(x)
-        H.append(self.H)
-        self.build_G(Huber = Huber)
-        res.append(self.res)   
-        sol.append(x)
-        H.append(self.H)
-        iteration = 1
+    def state_estimation(self, tol = 1e-6, niter = 100, Huber = False, lmb = None, rn = False):
+        flag, cond, value = True, True, None
         print('')
-        while (np.max(np.abs(x - x_old)) > tol) and (iteration < niter):
-            x_old = x
-            x = self.update_x(x, Huber = Huber)
-            sol.append(x)             
-            self.compute_res(x)   
-            self.build_Q(Huber = Huber, lmb = lmb)     
-            res.append(self.res)
-            self.build_H(x)
-            H.append(self.H)
-            self.build_G(Huber = Huber)
-            print(f'Iteration {iteration}, residual: {np.linalg.norm(x - x_old):.8f}')     
-            iteration += 1
-        self.compute_mags()        
-        # Std of the result
-        if len(self.constrained_meas) == 0:
-            self.std_sol = self.H.dot(np.linalg.inv(self.G).dot(self.H.T))
+        if Huber:
+            print('Running Huber state estimator........')
         else:
-            A = np.block([[self.G, self.C],
-                          [self.C.T, np.zeros((self.C.shape[1], self.C.shape[1]))]])
-            U = np.linalg.inv(A)
-            E1 = U[:self.G.shape[0], :self.G.shape[1]]
-            Sxz = E1.dot(self.H.T).dot(self.W)
-            self.std_sol = (np.eye(self.W.shape[0]) - self.H.dot(Sxz)).dot(np.linalg.inv(self.W)).dot( (np.eye(self.W.shape[0]) - self.H.dot(Sxz)).T )
+            print('Running WLS state estimator........')
         print('')
-        return res, sol, H, np.sqrt(np.diag(self.std_sol))
+        Results = {'solution': [], 'residual': [], 'jacobian': [], 'Q': [], 'std_sol': None, 'max_res': None, 'rm_meas': []}
+        res, sol, H, index_pops = list(), list(), list(), list()   
+        while (cond):
+            x = np.array([0 for _ in range(int((self.n-1)/2))] + [1 for _ in range(int((self.n-1)/2)+1)])
+            x_old = x*10
+            self.build_W()
+            self.assign(x)             
+            self.compute_res(x)    
+            self.Q = np.diag([1 for _ in self.res])
+            self.build_H(x)            
+            self.build_G(Huber = Huber)
+            Results['solution'].append(x)
+            Results['residual'].append(self.res)
+            Results['jacobian'].append(self.H)
+            Results['Q'].append(np.diag(self.Q))
+            iteration = 1
+            print('')
+            while (np.max(np.abs(x - x_old)) > tol) and (iteration < niter):
+                x_old = x
+                x = self.update_x(x, Huber = Huber)
+                self.compute_res(x)   
+                if iteration > 2:
+                    self.build_Q(Huber = Huber, lmb = lmb)     
+                self.build_H(x)
+                self.build_G(Huber = Huber)
+                Results['solution'].append(x)
+                Results['residual'].append(self.res)
+                Results['jacobian'].append(self.H)
+                Results['Q'].append(np.diag(self.Q))
+                print(f'Iteration {iteration}, residual: {np.linalg.norm(x - x_old):.8f}')     
+                iteration += 1
+            self.compute_mags()  
+            if iteration >= niter:
+                error
+            # Std of the result
+            if len(self.constrained_meas) == 0:
+                self.std_sol = self.H.dot(np.linalg.inv(self.G).dot(self.H.T))
+            else:
+                A = np.block([[self.G, self.C],
+                              [self.C.T, np.zeros((self.C.shape[1], self.C.shape[1]))]])
+                U = np.linalg.inv(A)
+                E1 = U[:self.G.shape[0], :self.G.shape[1]]
+                Sxz = E1.dot(self.H.T).dot(self.W)
+                self.std_sol = (np.eye(self.W.shape[0]) - self.H.dot(Sxz)).dot(np.linalg.inv(self.W)).dot( (np.eye(self.W.shape[0]) - self.H.dot(Sxz)).T )
+            self.std_sol = np.sqrt(np.diag(self.std_sol))
+            Results['std_sol'] = self.std_sol
+            self.norm_res()
+            if rn == False or Huber == True:
+                cond = False
+            else:
+                max_index = np.argmax(self.res_norm)                
+                if flag: # Me quedo con el primer resiudo máximo (normal) para luego parametrizar Lambda
+                    Results['max_res'] = np.max(np.abs(self.res))
+                    flag = False
+                if self.res_norm[max_index] > 3:
+                    print('')
+                    print(f'Max. normalized resiudal: {self.res_norm[max_index]:.3f}')
+                    print(f'Max. resiudal: {np.max(np.abs(self.res)):.3f}, {max_index}')
+                    attributes = [('id', 'ref'), ('type', 'tipo'), ('value', 'value'), ('std', 'std')]
+                    ref, tipo, value, std = self.meas[max_index].ref, self.meas[max_index].tipo, self.meas[max_index].value, self.meas[max_index].std
+                    for index in range(len(self.original_meas)):
+                        if self.original_meas[index]['id'] == ref and self.original_meas[index]['type'] == tipo and self.original_meas[index]['value'] == value and self.original_meas[index]['std'] == std:
+                            Results['rm_meas'].append(index)
+                            break
+                    #############################################
+                    A = list(np.array(self.res)*np.array([np.sqrt(item) for item in np.diag(self.W)]))
+                    B = list(self.res)
+                    C = np.array([list(np.array(A).T), list(np.array(B).T), list(np.array(self.res_norm).T)]).T
+                    #############################################                        
+                    print(f'Deleting {self.meas[max_index].__dict__}')
+                    self.meas.pop(max_index)
+                else:
+                    cond = False
+        print('')
+        return Results
         
     def compute_mags(self):
         for node in self.nodes:
@@ -87,9 +131,15 @@ class grid:
             V2 = line.nodes[1].Vx
             line.Ix = ((V1 - V2) / line.Z)
             line.I = np.abs(line.Ix)
+            line.Pij = np.real(line.nodes[0].Vx*np.conj(line.Ix))
+            line.Pji = -np.real(line.nodes[1].Vx*np.conj(line.Ix))
+            line.Qij = np.imag(line.nodes[0].Vx*np.conj(line.Ix))
+            line.Qji = -np.imag(line.nodes[1].Vx*np.conj(line.Ix))
         for node in self.nodes:
             node.Ix = np.sum([line.Ix if node == line.nodes[0] else -line.Ix for line in node.lines])
-            node.I = np.abs(node.Ix)        
+            node.I = np.abs(node.Ix)   
+            node.P = np.real(node.Vx*np.conj(node.Ix))
+            node.Q = np.imag(node.Vx*np.conj(node.Ix))     
         
     def build_H(self, x):
         self.assign(x)
@@ -115,6 +165,10 @@ class grid:
     def build_Q(self, lmb = 3, Huber = False):
         if Huber:
             self.Q = np.diag([lmb/np.abs(item) if np.abs(item) > lmb else 1 for item in self.res])
+            ##############################################################
+            # A = list(np.array(self.res)*np.array([np.sqrt(item) for item in np.diag(self.W)]))
+            # self.Q = np.diag([lmb/np.abs(item[0]) if np.abs(item[1]) > 100 and np.abs(item[0]) > lmb else 1 for item in zip(self.res, A)])
+            # print(np.diag(self.Q))
         else:
             self.Q = np.eye(self.H.shape[0])
         

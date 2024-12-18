@@ -1,0 +1,3 @@
+Ataque a un valor de P de inversor (mutliplico por 2).
+- WLS con detección de medidas erroneas vs Huber
+- Usar los dos tipos de pesos
