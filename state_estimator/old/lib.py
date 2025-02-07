@@ -10,11 +10,17 @@ class grid:
         self.lines = self.add_lines(lines, self.nodes)   
         self.n = len(self.nodes)*2 - 1
         self.meas = self.add_meas(meas, self.nodes, self.lines, self.n)
+# <<<<<<< HEAD
         self.original_meas = meas
+# =======
+        # self.original_meas = copy.deepcopy(self.meas)
+# >>>>>>> cb87a4206ef4a0b2e5f0e95a0edd4060ccea363c
         self.H = np.zeros((len(self.meas), self.n))
         self.Y = self.build_Y()
         self.constraints = constraints
         self.constrained_meas = [measurement(item['id'], item['node'], item['line'], item['type'], item['value'], 0, self.nodes, self.lines, self.n) for index, item in enumerate(self.constraints)] 
+                                
+        
     
     def add_nodes(self, nodes):
         nodes_list = list()
@@ -38,6 +44,7 @@ class grid:
         return meas_list
     
     def state_estimation(self, tol = 1e-6, niter = 100, Huber = False, lmb = None, rn = False):
+# <<<<<<< HEAD
         flag, cond, value = True, True, None
         print('')
         if Huber:
@@ -46,10 +53,15 @@ class grid:
             print('Running WLS state estimator........')
         print('')
         Results = {'solution': [], 'residual': [], 'jacobian': [], 'Q': [], 'std_sol': None, 'max_res': None, 'rm_meas': []}
+        res, sol, H, index_pops = list(), list(), list(), list()   
+# =======
+        # cond = True
+# >>>>>>> cb87a4206ef4a0b2e5f0e95a0edd4060ccea363c
         while (cond):
             x = np.array([0 for _ in range(int((self.n-1)/2))] + [1 for _ in range(int((self.n-1)/2)+1)])
             x_old = x*10
             self.build_W()
+# <<<<<<< HEAD
             self.assign(x)             
             self.compute_res(x)    
             self.Q = np.diag([1 for _ in self.res])
@@ -59,11 +71,24 @@ class grid:
             Results['residual'].append(self.res)
             Results['jacobian'].append(self.H)
             Results['Q'].append(np.diag(self.Q))
+# =======
+            # self.assign(x)
+            # res, sol, H = list(), list(), list()                
+            # self.compute_res(x)    
+            # self.build_Q(Huber = Huber, lmb = lmb)
+            # self.build_H(x)
+            # H.append(self.H)
+            # self.build_G(Huber = Huber)
+            # res.append(self.res)   
+            # sol.append(x)
+            # H.append(self.H)
+# >>>>>>> cb87a4206ef4a0b2e5f0e95a0edd4060ccea363c
             iteration = 1
             print('')
             while (np.max(np.abs(x - x_old)) > tol) and (iteration < niter):
                 x_old = x
                 x = self.update_x(x, Huber = Huber)
+# <<<<<<< HEAD
                 self.compute_res(x)   
                 if iteration > 2:
                     self.build_Q(Huber = Huber, lmb = lmb)     
@@ -77,8 +102,19 @@ class grid:
                 iteration += 1
             self.compute_mags()  
             if iteration >= niter:
-                Results = {'solution': [], 'residual': [], 'jacobian': [], 'Q': [], 'std_sol': None, 'max_res': None, 'rm_meas': []}
-                return Results
+                error
+# =======
+            #     sol.append(x)             
+            #     self.compute_res(x)   
+            #     self.build_Q(Huber = Huber, lmb = lmb)     
+            #     res.append(self.res)
+            #     self.build_H(x)
+            #     H.append(self.H)
+            #     self.build_G(Huber = Huber)
+            #     print(f'Iteration {iteration}, residual: {np.linalg.norm(x - x_old):.8f}')     
+            #     iteration += 1
+            # self.compute_mags()        
+# >>>>>>> cb87a4206ef4a0b2e5f0e95a0edd4060ccea363c
             # Std of the result
             if len(self.constrained_meas) == 0:
                 self.std_sol = self.H.dot(np.linalg.inv(self.G).dot(self.H.T))
@@ -89,6 +125,7 @@ class grid:
                 E1 = U[:self.G.shape[0], :self.G.shape[1]]
                 Sxz = E1.dot(self.H.T).dot(self.W)
                 self.std_sol = (np.eye(self.W.shape[0]) - self.H.dot(Sxz)).dot(np.linalg.inv(self.W)).dot( (np.eye(self.W.shape[0]) - self.H.dot(Sxz)).T )
+# <<<<<<< HEAD
             self.std_sol = np.sqrt(np.diag(self.std_sol))
             Results['std_sol'] = self.std_sol
             self.norm_res()
@@ -97,30 +134,43 @@ class grid:
             else:
                 max_index = np.argmax(self.res_norm)                
                 if flag: # Me quedo con el primer resiudo máximo (normal) para luego parametrizar Lambda
-                    max_res_value = np.max(np.abs(self.res))
-                    max_res_index = list(np.abs(self.res)).index(max_res_value)                    
-                    Results['max_res'] = np.abs(self.res[max_res_index]*np.sqrt(np.diag(self.W)[max_res_index]))
+                    Results['max_res'] = np.max(np.abs(self.res))
                     flag = False
                 if self.res_norm[max_index] > 3:
                     print('')
                     print(f'Max. normalized resiudal: {self.res_norm[max_index]:.3f}')
                     print(f'Max. resiudal: {np.max(np.abs(self.res)):.3f}, {max_index}')
+                    attributes = [('id', 'ref'), ('type', 'tipo'), ('value', 'value'), ('std', 'std')]
                     ref, tipo, value, std = self.meas[max_index].ref, self.meas[max_index].tipo, self.meas[max_index].value, self.meas[max_index].std
                     for index in range(len(self.original_meas)):
                         if self.original_meas[index]['id'] == ref and self.original_meas[index]['type'] == tipo and self.original_meas[index]['value'] == value and self.original_meas[index]['std'] == std:
                             Results['rm_meas'].append(index)
                             break
                     #############################################
-                    # A = list(np.array(self.res)*np.array([np.sqrt(item) for item in np.diag(self.W)]))
-                    # B = list(self.res)
-                    # C = np.array([list(np.array(A).T), list(np.array(B).T), list(np.array(self.res_norm).T)]).T
+                    A = list(np.array(self.res)*np.array([np.sqrt(item) for item in np.diag(self.W)]))
+                    B = list(self.res)
+                    C = np.array([list(np.array(A).T), list(np.array(B).T), list(np.array(self.res_norm).T)]).T
                     #############################################                        
                     print(f'Deleting {self.meas[max_index].__dict__}')
+# =======
+            #     # np.linalg.inv(self.W) - self.H.dot(E1).dot(self.H.T)
+            # self.std_sol = np.sqrt(np.diag(self.std_sol))
+            # self.norm_res()
+            # if rn == False:
+            #     cond = False
+            # else:
+            #     max_index = np.argmax(self.res_norm)
+            #     if self.res_norm[max_index] > 3:
+# >>>>>>> cb87a4206ef4a0b2e5f0e95a0edd4060ccea363c
                     self.meas.pop(max_index)
                 else:
                     cond = False
         print('')
+# <<<<<<< HEAD
         return Results
+# =======
+        return res, sol, H, self.std_sol 
+# >>>>>>> cb87a4206ef4a0b2e5f0e95a0edd4060ccea363c
         
     def compute_mags(self):
         for node in self.nodes:
@@ -149,6 +199,10 @@ class grid:
             self.build_C(x)
         
     def build_C(self, x):
+        # self.nodes_constrained = list()
+        # for node in self.nodes:
+        #     if all([True if m.tipo != 'P' or (m.tipo == 'P' and hasattr(m, 'line')) else False for m in node.meas]):
+        #         self.nodes_constrained.append(node)
         for index, m in enumerate(self.constrained_meas):
             m.compute_jacobian()            
         self.C = np.array([item.dh for item in self.constrained_meas]).T
@@ -159,7 +213,11 @@ class grid:
         
     def build_Q(self, lmb = 3, Huber = False):
         if Huber:
-            self.Q = np.diag([(lmb/np.abs(item[0]))/np.sqrt(item[1]) if np.abs(item[0]*np.sqrt(item[1])) > lmb else 1 for item in zip(self.res, np.diag(self.W))])
+            self.Q = np.diag([lmb/np.abs(item) if np.abs(item) > lmb else 1 for item in self.res])
+            ##############################################################
+            # A = list(np.array(self.res)*np.array([np.sqrt(item) for item in np.diag(self.W)]))
+            # self.Q = np.diag([lmb/np.abs(item[0]) if np.abs(item[1]) > 100 and np.abs(item[0]) > lmb else 1 for item in zip(self.res, A)])
+            # print(np.diag(self.Q))
         else:
             self.Q = np.eye(self.H.shape[0])
         
