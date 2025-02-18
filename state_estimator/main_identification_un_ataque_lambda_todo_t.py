@@ -4,16 +4,22 @@ import numpy as np
 import pandas as pd
 import copy
 import random
+import time
+import json
+
+num_lmb = 100
+n_simus = 1000
 
 resultados = dict()
 
 path = ['../data/pv_2_3_180_', '../data_Cati/pv_2_3_180_']
-case = ['090neg', '090pos', '100pos']
-for c in case:
+for c in ['090neg', '090pos', '100pos']:
     resultados[c] = dict()
     for hour in ['08', '09', '10', '11', '12', '13', '14']:
+        
+        t0 = time.time()
         resultados[c][hour] = dict()
-        for minute in ['00', '15', '30', '45']:
+        for minute in ['00']:
             
             
             sheet_name = hour + '_' + minute + '_pf_' + c
@@ -41,7 +47,7 @@ for c in case:
             names_Q = [names[index] for index in range(len(names)) if names[index].startswith('Q_LV')]
             names_U = [names[index] for index in range(len(names)) if names[index].startswith('U_LV')]
             
-            lmb_range = np.linspace(0.01, 50, 100)
+            lmb_range = np.linspace(0.01, 50, num_lmb)
             Res__ide = []
             
             for lmb_value in lmb_range:
@@ -50,7 +56,6 @@ for c in case:
                 
                     Res_ide.append([])
                     
-                    n_simus = 1000
                     for _ in range(n_simus):
                         
                         
@@ -80,7 +85,8 @@ for c in case:
                                                        niter = 50, 
                                                        Huber = False, 
                                                        lmb = None, 
-                                                       rn = True)  
+                                                       rn = True,
+                                                       print_info = False)  
                         
                         # Máximo residuo normalizado antes de descartar ninguna medida  -> ajustamos lambda
                         lmb_value = 2#Results_WLS['max_res']*0.5
@@ -91,7 +97,8 @@ for c in case:
                                                             niter = 50, 
                                                             Huber = True, 
                                                             lmb = lmb_value, 
-                                                            rn = False)
+                                                            rn = False,
+                                                            print_info = False)
                         
                         # Guardamos los resultados
                         df_evol_Q = pd.DataFrame(list(np.array([
@@ -119,7 +126,7 @@ for c in case:
                             # Step 3: Extract the names of the rows that satisfy both conditions
                             result_rows = df_evol_Q[final_value_condition].index[decreasing_condition].tolist()
                     
-                        print(f'Ataque sobre: {ataque}, identificación: {result_rows}\n')
+                        # print(f'Ataque sobre: {ataque}, identificación: {result_rows}\n')
                         
                         # 0 detecta
                         # 1 detecta y detecta alguno más incorrecto
@@ -138,4 +145,14 @@ for c in case:
                     Res__ide.append(Res_ide)
                         
             resultados[c][hour][minute] = Res__ide
+            print(f'{c}-{hour}-{minute}')
+            with open(c + '_' + hour + '_' + minute + '.json', 'w') as json_file:
+                json.dump(resultados, json_file, indent=4)
 
+
+        t1 = time.time()
+        print(t1-t0)
+
+
+with open('data_simus_ts.json', 'w') as json_file:
+    json.dump(resultados, json_file, indent=4)

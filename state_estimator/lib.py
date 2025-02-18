@@ -37,14 +37,15 @@ class grid:
             meas_list.append(measurement(item['id'], item['node'], item['line'], item['type'], item['value'], item['std'], nodes, lines, n))
         return meas_list
     
-    def state_estimation(self, tol = 1e-6, niter = 100, Huber = False, lmb = None, rn = False):
+    def state_estimation(self, tol = 1e-6, niter = 100, Huber = False, lmb = None, rn = False, print_info = True):
         flag, cond, value = True, True, None
-        print('')
-        if Huber:
-            print('Running Huber state estimator........')
-        else:
-            print('Running WLS state estimator........')
-        print('')
+        if print_info:
+            print('')
+            if Huber:
+                print('Running Huber state estimator........')
+            else:
+                print('Running WLS state estimator........')
+            print('')
         Results = {'solution': [], 'residual': [], 'jacobian': [], 'Q': [], 'std_sol': None, 'max_res': None, 'rm_meas': []}
         while (cond):
             x = np.array([0 for _ in range(int((self.n-1)/2))] + [1 for _ in range(int((self.n-1)/2)+1)])
@@ -60,7 +61,8 @@ class grid:
             Results['jacobian'].append(self.H)
             Results['Q'].append(np.diag(self.Q))
             iteration = 1
-            print('')
+            if print_info:
+                print('')
             while (np.max(np.abs(x - x_old)) > tol) and (iteration < niter):
                 x_old = x
                 x = self.update_x(x, Huber = Huber)
@@ -73,7 +75,8 @@ class grid:
                 Results['residual'].append(self.res)
                 Results['jacobian'].append(self.H)
                 Results['Q'].append(np.diag(self.Q))
-                print(f'Iteration {iteration}, residual: {np.linalg.norm(x - x_old):.8f}')     
+                if print_info:
+                    print(f'Iteration {iteration}, residual: {np.linalg.norm(x - x_old):.8f}')     
                 iteration += 1
             self.compute_mags()  
             if iteration >= niter:
@@ -102,9 +105,10 @@ class grid:
                     Results['max_res'] = np.abs(self.res[max_res_index]*np.sqrt(np.diag(self.W)[max_res_index]))
                     flag = False
                 if self.res_norm[max_index] > 3:
-                    print('')
-                    print(f'Max. normalized resiudal: {self.res_norm[max_index]:.3f}')
-                    print(f'Max. resiudal: {np.max(np.abs(self.res)):.3f}, {max_index}')
+                    if print_info:
+                        print('')
+                        print(f'Max. normalized resiudal: {self.res_norm[max_index]:.3f}')
+                        print(f'Max. resiudal: {np.max(np.abs(self.res)):.3f}, {max_index}')
                     ref, tipo, value, std = self.meas[max_index].ref, self.meas[max_index].tipo, self.meas[max_index].value, self.meas[max_index].std
                     for index in range(len(self.original_meas)):
                         if self.original_meas[index]['id'] == ref and self.original_meas[index]['type'] == tipo and self.original_meas[index]['value'] == value and self.original_meas[index]['std'] == std:
@@ -115,11 +119,13 @@ class grid:
                     # B = list(self.res)
                     # C = np.array([list(np.array(A).T), list(np.array(B).T), list(np.array(self.res_norm).T)]).T
                     #############################################                        
-                    print(f'Deleting {self.meas[max_index].__dict__}')
+                    if print_info:
+                        print(f'Deleting {self.meas[max_index].__dict__}')
                     self.meas.pop(max_index)
                 else:
                     cond = False
-        print('')
+        if print_info:
+            print('')
         return Results
         
     def compute_mags(self):
