@@ -331,8 +331,16 @@ class grid:
             df_meas.to_excel(writer, sheet_name='Measurements', index=False)
 
         print(f"Archivo Excel guardado como '{file_name}'")
+        
+    def lab_results(self):
+        results = {}
+        results['U'] = [node.V for node in self.nodes]
+        results['theta'] = [node.theta for node in self.nodes]
+        results['Pji'] = [self.meas[0].Pji(line = l) for l in self.lines]
+        results['Qji'] = [self.meas[0].Qji(line = l) for l in self.lines]
+        results['Iji'] = [np.sqrt(self.meas[0].Iji(line = l)) for l in self.lines]
+        return results
             
-         
 class node:
     def __init__(self, ref, name, B):
         self.ref = ref   

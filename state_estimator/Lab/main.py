@@ -54,4 +54,7 @@ angulos = [node.theta for node in net.nodes]
 print(tensiones)
 print(angulos)
 
+lab_r = net.lab_results()
+
+
 
