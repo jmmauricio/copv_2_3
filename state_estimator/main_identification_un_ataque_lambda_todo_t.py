@@ -5,9 +5,11 @@ import pandas as pd
 import copy
 import random
 import json
+import time
+t0 = time.time()
 
-num_lmb = 7
-n_simus = 4
+num_lmb = 50
+n_simus = 1000
 
 resultados = dict()
 
@@ -20,6 +22,8 @@ for c in ['090neg', '090pos', '100pos']:
     
     for hour in ['08', '09', '10', '11', '12', '13', '14']:
         print(hour)
+        print(time.time() - t0)
+        t0 = time.time()
         
         resultados[c][hour] = dict()            
             
