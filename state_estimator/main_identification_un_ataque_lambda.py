@@ -178,6 +178,14 @@ for lmb_value in lmb_range:
         Res__ide.append(Res_ide)
             
 
+import json
+with open('solo_uno.json', 'w') as json_file:
+    json.dump({'res': Res__ide}, json_file, indent=4)
+
+
+with open('solo_uno.json', 'r') as json_file:
+    Res__ide = json.load(json_file)
+
 import matplotlib.pyplot as plt
 from collections import Counter
 from pydae import plot_tools
