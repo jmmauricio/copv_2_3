@@ -41,10 +41,10 @@ for c in ['090neg', '090pos', '100pos']:
         
         net = lib.grid(Nodes, Lines, Meas, Cons)
         
-        count = lib.identification_fun(lmb_min = 0.01, lmb_max = 50, lmb_num = 100, n_simus = 1000, names = names, net_base = net, num_attacks = 2)
+        count = lib.identification_fun(lmb_min = 0.01, lmb_max = 50, lmb_num = 100, n_simus = 1000, names = names, net_base = net, num_attacks = 1)
         
         resultados[c][hour] = count
 
 
-with open('data_simus_ts.json', 'w') as json_file:
+with open('data_simus_ts_1ataque.json', 'w') as json_file:
     json.dump(resultados, json_file, indent=4)
