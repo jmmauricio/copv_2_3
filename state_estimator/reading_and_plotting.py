@@ -26,7 +26,7 @@ fig, axs = plt.subplots(3, 1, figsize=(8, 6), sharex=True)
 
 # Definimos los colores del plot
 colors = plot_tools.set_style(plt)
-colors.pop(3)
+# colors.pop(3)
 
 # Establecemos las etiquetas
 labels = ['Detection', 'Detection and others', 'Incorrect detection', 'No detection']
@@ -88,6 +88,7 @@ plt.plot(P_gen)
 
 #%%
 
+tipo = 'U'
 
 P_gen = list() 
 
@@ -106,7 +107,7 @@ for c in ['090neg']:
                                                    'std_2.json', 
                                                    Nodes, 
                                                    Lines, 
-                                                   add_noise = True)
+                                                   add_noise = False)
         P_gen.append(Meas[0]['value'])
 
 
@@ -124,15 +125,18 @@ num_lmb = 100
 lmb_range = np.linspace(0.01, 50, num_lmb)
 
 fig, axs = plt.subplots(4, 2, figsize=(12,8))
+plt.subplots_adjust(wspace=0.1) 
         
 axs[0,0].stackplot(
-    list(range(23)), 
+    list(range(1,24)), 
     P_gen, 
     alpha=0.7
 )
 axs[0,0].grid(True)
+for it in range(8, 15):
+    axs[0,0].plot([it, it],[0,0.35],color='k', alpha=0.5)
+axs[0,0].set_ylim([0.0, 0.4])
 
-tipo = 'P'
 labels_time = ['8h', '9h', '10h', '11h', '12h', '13h', '14h']
 
 # Generamos los ataques para cada variable
@@ -200,6 +204,7 @@ for c in ['090neg']:
             
         if i != 0 or j != 0:
             axs[i,j].set_ylabel(labels_time[j*4+i-1])
+            axs[i,j].set_xlim([0,50])
         axs[i,j].grid(True)
         
     # axs[-1].legend()
