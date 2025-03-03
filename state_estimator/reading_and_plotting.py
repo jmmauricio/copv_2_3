@@ -4,12 +4,16 @@ import matplotlib.pyplot as plt
 from pydae import plot_tools
 from lib_timeseries import system_topology, system_measurements
 
+
+
+tipo = 'P'
+file_name = 'data_simus_ts_2ataques.json'
+
 # Leemos el json de resultados
-with open('data_simus_ts_1ataque.json','r') as file:
+with open(file_name,'r') as file:
     data = json.load(file)     
     
 
-tipo = 'U'
 
 P_gen = list() 
 
@@ -34,7 +38,7 @@ for c in ['090neg']:
 
 
 # Leemos el json de resultados
-with open('data_simus_ts.json','r') as file:
+with open(file_name,'r') as file:
     data = json.load(file)     
     
 # '090neg', '090pos', '100pos'
@@ -101,7 +105,12 @@ for c in ['090neg']:
         colors.pop(3)
         
         # Establecemos las etiquetas
-        labels = ['Detection', 'Detection and others', 'Incorrect detection', 'No detection']
+        if len(data[c][hour][x_values[0]][tipo].values()) == 4:
+            labels = ['Detection', 'Detection and others', 'Incorrect detection', 'No detection']
+        else:
+            labels = ['Detection', 'Detection and others', 'Partial detection', 'Partial detection and others', 'No detection', 'Incorrect detection']        
+        
+        
         
         # Inicializamos figura
         counts = []
@@ -131,7 +140,12 @@ for c in ['090neg']:
     
     
 lines = axs[0, 1].collections
-legend=fig.legend(lines, labels, loc='upper center', ncol=4, bbox_to_anchor=(0.674, 0.93))
+
+if len(labels) == 6:
+    legend=fig.legend(lines, labels, loc='upper center', ncol=3, bbox_to_anchor=(0.688, 0.96))
+else:
+    legend=fig.legend(lines, labels, loc='upper center', ncol=4, bbox_to_anchor=(0.674, 0.93))
+
 # fig.text(0.18, 0.901, 'Single attack - ' + tipo, fontsize=12)
 legend_edge_color = legend.get_frame().get_edgecolor()
 

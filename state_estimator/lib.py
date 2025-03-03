@@ -768,14 +768,24 @@ def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, num_
     lmb_range = np.linspace(lmb_min, lmb_max, lmb_num)
     
     # Diccionario de resultados
-    count = {
-        str(lmb): {
-            'P': {'0': 0, '1': 0, '2': 0, '3': 0},
-            'Q': {'0': 0, '1': 0, '2': 0, '3': 0},
-            'U': {'0': 0, '1': 0, '2': 0, '3': 0}
-        }
-        for lmb in lmb_range
-    }    
+    if num_attacks == 1:
+        count = {
+            str(lmb): {
+                'P': {'0': 0, '1': 0, '2': 0, '3': 0},
+                'Q': {'0': 0, '1': 0, '2': 0, '3': 0},
+                'U': {'0': 0, '1': 0, '2': 0, '3': 0}
+            }
+            for lmb in lmb_range
+        }  
+    if num_attacks == 2:
+        count = {
+            str(lmb): {
+                'P': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0},
+                'Q': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0},
+                'U': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0}
+            }
+            for lmb in lmb_range
+        }    
     
     # Nombre de las medidas a las que se puede atacar
     names_P = [names[index] for index in range(len(names)) if names[index].startswith('P_LV')]
@@ -793,6 +803,7 @@ def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, num_
                 random_entries = random.sample(names_ataque, num_attacks)
                 
                 # Se establece la amplitud del ataque (+-20% en P y Q, +-2% en U)
+                nums = []
                 for ataque in random_entries:
                     if ataque.startswith('P'):
                         num = names.index(ataque)
@@ -804,7 +815,8 @@ def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, num_
                         num = names.index(ataque)
                         magnitud = 0.98 + np.random.rand()*0.04
                     net.meas[num].value = magnitud*net.meas[num].value
-            
+                    nums.append(num)
+                    
                 # Corremos el estimador de estado
                 Results_Huber = net.state_estimation(tol = 1e-4, niter = 50, Huber = True, lmb = lmb_value, rn = False)
                 
@@ -831,17 +843,32 @@ def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, num_
                         
                 
                 # Clasificamos la identificación
-                if num in result_rows:
-                    if len(result_rows) == 1:
-                        Res = '0' # 0 detecta
+                if num_attacks == 1:
+                    if num in result_rows:
+                        if len(result_rows) == 1:
+                            Res = '0' # 0 detecta
+                        else:
+                            Res = '1' # 1 detecta y detecta alguno más incorrecto
                     else:
-                        Res = '1' # 1 detecta y detecta alguno más incorrecto
-                else:
-                    if len(result_rows) == 0:            
-                        Res = '3' # 3 no detecta nada
-                    else:     
-                        Res = '2' # 2 detecta incorrecto
-                        
+                        if len(result_rows) == 0:            
+                            Res = '3' # 3 no detecta nada
+                        else:     
+                            Res = '2' # 2 detecta incorrecto
+            
+                if num_attacks == 2:
+                    if set(nums) == set(result_rows):  
+                        Res = '0'  # 0: detecta
+                    elif set(nums).issubset(set(result_rows)):  
+                        Res = '1'  # 1: detecta y detecta alguno más incorrecto
+                    elif any(n in result_rows for n in nums) and len(result_rows) == 1:
+                        Res = '2'  # 2: detecta uno de los dos 
+                    elif any(n in result_rows for n in nums):
+                        Res = '3'  # 3: detecta uno de los dos y detecta alguno más incorrecto
+                    elif len(result_rows) == 0:
+                        Res = '4'  # 4: no detecta nada
+                    else:
+                        Res = '5'  # 5: detecta incorrecto
+
                 # Contamos
                 if ataque.startswith('P'):
                     count[str(lmb_value)]['P'][Res] += 1
