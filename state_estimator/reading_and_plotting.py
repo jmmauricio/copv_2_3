@@ -6,7 +6,7 @@ from lib_timeseries import system_topology, system_measurements
 
 
 
-tipo = 'P'
+tipo = 'U'
 file_name = 'data_simus_ts_2ataques.json'
 
 # Leemos el json de resultados
@@ -125,6 +125,7 @@ for c in ['090neg']:
             lmb_range, 
             counts, 
             labels=labels,
+            colors=colors,
             alpha=0.7
         )
     
@@ -143,13 +144,16 @@ lines = axs[0, 1].collections
 
 if len(labels) == 6:
     legend=fig.legend(lines, labels, loc='upper center', ncol=3, bbox_to_anchor=(0.688, 0.96))
+    legend_edge_color = legend.get_frame().get_edgecolor()
+    fig.text(0.18, 0.901, 'Double attack - ' + tipo, fontsize=12,
+             bbox=dict(facecolor='white', edgecolor=legend_edge_color, boxstyle='round,pad=0.3'))
 else:
-    legend=fig.legend(lines, labels, loc='upper center', ncol=4, bbox_to_anchor=(0.674, 0.93))
+    legend=fig.legend(lines, labels, loc='upper center', ncol=4, bbox_to_anchor=(0.674, 0.93))   
+    legend_edge_color = legend.get_frame().get_edgecolor() 
+    fig.text(0.18, 0.901, 'Single attack - ' + tipo, fontsize=12,
+             bbox=dict(facecolor='white', edgecolor=legend_edge_color, boxstyle='round,pad=0.3'))
 
 # fig.text(0.18, 0.901, 'Single attack - ' + tipo, fontsize=12)
-legend_edge_color = legend.get_frame().get_edgecolor()
-
-fig.text(0.18, 0.901, 'Single attack - ' + tipo, fontsize=12,
-         bbox=dict(facecolor='white', edgecolor=legend_edge_color, boxstyle='round,pad=0.3'))
 
 
+plt.savefig('figs/'+ file_name.split('.')[0] + '_' + tipo + '.pdf')
