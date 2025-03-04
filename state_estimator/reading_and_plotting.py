@@ -6,8 +6,10 @@ from lib_timeseries import system_topology, system_measurements
 
 
 
-tipo = 'U'
+tipo = 'P'
 file_name = 'data_simus_ts_2ataques.json'
+fp_list = ['090neg']
+
 
 # Leemos el json de resultados
 with open(file_name,'r') as file:
@@ -65,7 +67,7 @@ axs[0,0].set_ylim([0.0, 0.4])
 labels_time = ['8h', '9h', '10h', '11h', '12h', '13h', '14h']
 
 # Generamos los ataques para cada variable
-for c in ['090neg']:
+for c in fp_list:
     i, j = 0, 0
     for hour in ['08', '09', '10', '11', '12', '13', '14']:
         i += 1       
@@ -102,7 +104,7 @@ for c in ['090neg']:
         
         # Definimos los colores del plot
         colors = plot_tools.set_style(plt)
-        colors.pop(3)
+        # colors.pop(3)
         
         # Establecemos las etiquetas
         if len(data[c][hour][x_values[0]][tipo].values()) == 4:
