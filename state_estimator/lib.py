@@ -771,18 +771,18 @@ def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, num_
     if num_attacks == 1:
         count = {
             str(lmb): {
-                'P': {'0': 0, '1': 0, '2': 0, '3': 0},
-                'Q': {'0': 0, '1': 0, '2': 0, '3': 0},
-                'U': {'0': 0, '1': 0, '2': 0, '3': 0}
+                'P': {'0': 0, '1': 0, '2': 0, '3': 0, 'TP': 0, 'TN': 0, 'FP': 0, 'FN': 0},
+                'Q': {'0': 0, '1': 0, '2': 0, '3': 0, 'TP': 0, 'TN': 0, 'FP': 0, 'FN': 0},
+                'U': {'0': 0, '1': 0, '2': 0, '3': 0, 'TP': 0, 'TN': 0, 'FP': 0, 'FN': 0}
             }
             for lmb in lmb_range
         }  
     if num_attacks == 2:
         count = {
             str(lmb): {
-                'P': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0},
-                'Q': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0},
-                'U': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0}
+                'P': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, 'TP': 0, 'TN': 0, 'FP': 0, 'FN': 0},
+                'Q': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, 'TP': 0, 'TN': 0, 'FP': 0, 'FN': 0},
+                'U': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, 'TP': 0, 'TN': 0, 'FP': 0, 'FN': 0}
             }
             for lmb in lmb_range
         }    
@@ -843,31 +843,58 @@ def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, num_
                         
                 
                 # Clasificamos la identificación
+                res_kpi = {'TP': 0, 'TN': 0, 'FP': 0, 'FN': 0}
+                
                 if num_attacks == 1:
-                    if num in result_rows:
+                    if num in result_rows:     
+                        res_kpi['TP'] += 1
                         if len(result_rows) == 1:
-                            Res = '0' # 0 detecta
+                            Res = '0' # 0 detecta    
+                            res_kpi['TN'] += (len(net.meas) - 1)
                         else:
-                            Res = '1' # 1 detecta y detecta alguno más incorrecto
+                            Res = '1' # 1 detecta y detecta alguno más incorrecto 
+                            res_kpi['FN'] += (len(result_rows) - 1)
+                            res_kpi['TN'] += (len(net.meas) - 1 - (len(result_rows) - 1) )
                     else:
                         if len(result_rows) == 0:            
                             Res = '3' # 3 no detecta nada
+                            res_kpi['FP'] += 1    
+                            res_kpi['TN'] += (len(net.meas) - 1)                        
                         else:     
                             Res = '2' # 2 detecta incorrecto
+                            res_kpi['FN'] += len(result_rows)
+                            res_kpi['TN'] += (len(net.meas) - len(result_rows))
             
                 if num_attacks == 2:
                     if set(nums) == set(result_rows):  
-                        Res = '0'  # 0: detecta
+                        Res = '0'  # 0: detecta                           
+                        res_kpi['TP'] += 2
+                        res_kpi['TN'] += (len(net.meas) - 2)
                     elif set(nums).issubset(set(result_rows)):  
-                        Res = '1'  # 1: detecta y detecta alguno más incorrecto
+                        Res = '1'  # 1: detecta y detecta alguno más incorrecto                           
+                        res_kpi['TP'] += 2
+                        res_kpi['FN'] += (len(result_rows) - 2)
+                        res_kpi['TN'] += (len(net.meas) - 2 - (len(result_rows) - 2))
                     elif any(n in result_rows for n in nums) and len(result_rows) == 1:
-                        Res = '2'  # 2: detecta uno de los dos 
+                        Res = '2'  # 2: detecta uno de los dos                            
+                        res_kpi['TP'] += 1
+                        res_kpi['FP'] += 1  
+                        res_kpi['TN'] += (len(net.meas) - 2)
                     elif any(n in result_rows for n in nums):
-                        Res = '3'  # 3: detecta uno de los dos y detecta alguno más incorrecto
+                        Res = '3'  # 3: detecta uno de los dos y detecta alguno más incorrecto                           
+                        res_kpi['TP'] += 1
+                        res_kpi['FN'] += (len(result_rows) - 1)
+                        res_kpi['FP'] += 1  
+                        res_kpi['TN'] += (len(net.meas) - 1 - (len(result_rows) - 1))
                     elif len(result_rows) == 0:
                         Res = '4'  # 4: no detecta nada
+                        res_kpi['FP'] += 2
+                        res_kpi['TN'] += (len(net.meas) - 2)
                     else:
                         Res = '5'  # 5: detecta incorrecto
+                        res_kpi['FN'] += len(result_rows)
+                        res_kpi['FP'] += 2
+                        res_kpi['TN'] += (len(net.meas) - 4)
 
                 # Contamos
                 if ataque.startswith('P'):
