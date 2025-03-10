@@ -762,7 +762,7 @@ class measurement:
         
         
         
-def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, num_attacks):
+def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, num_attacks, bandas):
     
     # Establecemos el rango de valores de lambda
     lmb_range = np.linspace(lmb_min, lmb_max, lmb_num)
@@ -807,13 +807,13 @@ def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, num_
                 for ataque in random_entries:
                     if ataque.startswith('P'):
                         num = names.index(ataque)
-                        magnitud = 0.8 + np.random.rand()*0.4
+                        magnitud = bandas['P'][0] + np.random.rand()*bandas['P'][1]
                     if ataque.startswith('Q'):
                         num = names.index(ataque)
-                        magnitud = 0.8 + np.random.rand()*0.4
+                        magnitud = bandas['Q'][0] + np.random.rand()*bandas['Q'][1]
                     if ataque.startswith('U'):
                         num = names.index(ataque)
-                        magnitud = 0.98 + np.random.rand()*0.04
+                        magnitud = bandas['U'][0] + np.random.rand()*bandas['U'][1]
                     net.meas[num].value = magnitud*net.meas[num].value
                     nums.append(num)
                     

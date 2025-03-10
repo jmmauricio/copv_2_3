@@ -11,13 +11,15 @@ Meas, mjson, stdjson = system_measurements(extended_path,
                                            'std_2.json', 
                                            Nodes, 
                                            Lines, 
-                                           add_noise = True)
+                                           add_noise = True,
+                                           corrientes = True)
 Meas_noiseless, mjson, stdjson = system_measurements(extended_path, 
                                            'measurements.json', 
                                            'std_2.json', 
                                            Nodes, 
                                            Lines, 
-                                           add_noise = False)
+                                           add_noise = False,
+                                           corrientes = True)
 Cons = system_constraints(Nodes)
 
 # Nombres de las medidas en orden
@@ -38,7 +40,7 @@ Results_noiseless = net_noiseless.state_estimation(tol = 1e-4,
 ######################################################################
 ######################################################################
 
-ataque = ['P_LV0103']
+ataque = ['P_LV0101']
 for at in ataque:
     print(names.index(at))
     
@@ -63,7 +65,7 @@ Results_WLS = net.state_estimation(tol = 1e-4,
 # C = np.array([list(np.array(A).T), list(np.array(B).T), list(np.array(net.res_norm).T)]).T
 
 # Máximo residuo normalizado antes de descartar ninguna medida  -> ajustamos lambda
-lmb_value = Results_WLS['max_res']*0.5
+lmb_value = 5#Results_WLS['max_res']*0.5
 
 # Restauramos todas las medidas y resolvemos Huber
 net = lib.grid(Nodes, Lines, Meas, Cons)
