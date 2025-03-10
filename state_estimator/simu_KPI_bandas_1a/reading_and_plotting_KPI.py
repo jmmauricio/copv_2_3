@@ -5,7 +5,7 @@ from pydae import plot_tools
 from lib_timeseries import system_topology, system_measurements
 import matplotlib.gridspec as gridspec
 
-tipo = 'U'
+tipo = 'P'
 bandas_array = [{'P': [0.80, 0.05], 'Q': [0.80, 0.05], 'U': [0.980, 0.005]},
                 {'P': [0.85, 0.05], 'Q': [0.85, 0.05], 'U': [0.985, 0.005]},
                 {'P': [0.90, 0.05], 'Q': [0.90, 0.05], 'U': [0.990, 0.005]},
@@ -93,8 +93,8 @@ for index_hour, hour in enumerate(['08', '10', '13']):
             kpis.append(values)  
             
         axes[index_hour, 0].plot(lmb_range, [item[0]*100 for item in kpis], color=colores[index_bandas], label='avg precision')
-        axes[index_hour, 1].plot(lmb_range, [item[1]*100 for item in kpis], color=colores[index_bandas], label='avg recall')
-        axes[index_hour, 2].plot(lmb_range, [item[2]*100 for item in kpis], color=colores[index_bandas], label='avg accuracy')
+        axes[index_hour, 1].plot(lmb_range, [item[1]*100 for item in kpis], color=colores[index_bandas], label='avg accuracy')
+        axes[index_hour, 2].plot(lmb_range, [item[2]*100 for item in kpis], color=colores[index_bandas], label='avg recall')
             
         
 
