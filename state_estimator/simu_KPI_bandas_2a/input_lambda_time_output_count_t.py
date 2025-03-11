@@ -12,7 +12,7 @@ bandas_array = [{'P': [0.80, 0.05], 'Q': [0.80, 0.05], 'U': [0.980, 0.005]},
                 {'P': [1.10, 0.05], 'Q': [1.10, 0.05], 'U': [1.010, 0.005]},
                 {'P': [1.15, 0.05], 'Q': [1.15, 0.05], 'U': [1.015, 0.005]}]
 
-lambda_value = 3
+lambda_value = 2.5
 
 for index_banda_1, banda_1 in enumerate(bandas_array): 
     for index_banda_2, banda_2 in enumerate(bandas_array):    
@@ -50,7 +50,7 @@ for index_banda_1, banda_1 in enumerate(bandas_array):
                 
                 net = lib.grid(Nodes, Lines, Meas, Cons)
                 
-                n_simus = 1000
+                n_simus = 100
                 count = lib.identification_fun_fixed_lmb_fixed_attack_2attacks(lambda_value = lambda_value, n_simus = n_simus, names = names, net_base = net, banda1 = banda_1, banda2 = banda_2)
                 
                 for medida_atacada in ['P', 'Q', 'U']:               
@@ -60,5 +60,5 @@ for index_banda_1, banda_1 in enumerate(bandas_array):
                 resultados[c][hour] = count
         
         
-        with open('data_simus_ts_bandas_' + str(index_banda_1) + '_' + str(index_banda_2) + '2ataques_KPI.json', 'w') as json_file:
+        with open('data_simus_ts_bandas_' + str(index_banda_1) + '_' + str(index_banda_2) + '_2ataques_KPI.json', 'w') as json_file:
             json.dump(resultados, json_file, indent=4)
