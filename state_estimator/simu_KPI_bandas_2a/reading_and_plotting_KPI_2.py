@@ -9,7 +9,7 @@ fp = '090neg'
 hour = '10'
 tipo = 'P'
 num_indices = 8 
-metrics = ['Precision', 'Accuracy', 'Recall']  # Métricas a representar
+metrics = ['Precision', 'Accuracy', 'Recall', 'F1']  # Métricas a representar
 num_subplots = len(metrics)
 
 data_matrices = [np.zeros((num_indices, num_indices)) for _ in range(num_subplots)]
@@ -22,8 +22,13 @@ for i in range(num_indices):
                 data = json.load(file)
                 for k, metric in enumerate(metrics):
                     try:
-                        value = data[fp][hour]['2.5'][tipo][metric] * 100
-                        data_matrices[k][i, j] = value
+                        if metric != 'F1':
+                            value = data[fp][hour]['2.5'][tipo][metric] 
+                        else:
+                            precision = data[fp][hour]['2.5'][tipo]['Precision']
+                            recall = data[fp][hour]['2.5'][tipo]['Recall']
+                            value = 2*precision*recall/(precision + recall)
+                        data_matrices[k][i, j] = value*100
                     except KeyError:
                         data_matrices[k][i, j] = np.nan  
         else:
@@ -31,11 +36,11 @@ for i in range(num_indices):
                 data_matrices[k][i, j] = np.nan
 
 # Crear figura y rejilla con espacio para la barra de color
-fig = plt.figure(figsize=(18, 6))
-gs = GridSpec(1, 4, width_ratios=[1, 1, 1, 0.05], wspace=0.3)  # 3 subplots + espacio para colorbar
+fig = plt.figure(figsize=(24, 6))
+gs = GridSpec(1, 5, width_ratios=[1, 1, 1, 1, 0.05], wspace=0.2)  # 4 subplots + espacio para colorbar
 
-axes = [fig.add_subplot(gs[0]), fig.add_subplot(gs[1]), fig.add_subplot(gs[2])]
-cax = fig.add_subplot(gs[3])  
+axes = [fig.add_subplot(gs[0]), fig.add_subplot(gs[1]), fig.add_subplot(gs[2]), fig.add_subplot(gs[3])]
+cax = fig.add_subplot(gs[4])  
 
 cmap = plt.cm.magma  
 norm = plt.Normalize(vmin=0, vmax=100)
