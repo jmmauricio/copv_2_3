@@ -6,9 +6,10 @@ from lib_timeseries import system_topology, system_measurements
 
 
 
-tipo = 'P'
-file_name = 'data_simus_ts_2ataques.json'
-fp_list = ['090neg']
+tipo = 'Q'
+# file_name = 'data_simus_ts_2ataques.json'
+file_name = 'data_simus_ts_1ataque.json'
+fp_list = ['090neg', '090pos', '100pos']
 
 
 # Leemos el json de resultados
@@ -51,23 +52,24 @@ with open(file_name,'r') as file:
 num_lmb = 100
 lmb_range = np.linspace(0.01, 50, num_lmb)
 
-fig, axs = plt.subplots(4, 2, figsize=(12,8))
-plt.subplots_adjust(wspace=0.1) 
-        
-axs[0,0].stackplot(
-    list(range(1,24)), 
-    P_gen, 
-    alpha=0.7
-)
-axs[0,0].grid(True)
-for it in range(8, 15):
-    axs[0,0].plot([it, it],[0,0.35], 'k-.', alpha=0.5)
-axs[0,0].set_ylim([0.0, 0.4])
+
 
 labels_time = ['8h', '9h', '10h', '11h', '12h', '13h', '14h']
 
 # Generamos los ataques para cada variable
 for c in fp_list:
+    fig, axs = plt.subplots(4, 2, figsize=(12,8))
+    plt.subplots_adjust(wspace=0.1) 
+            
+    axs[0,0].stackplot(
+        list(range(1,24)), 
+        P_gen, 
+        alpha=0.7
+    )
+    axs[0,0].grid(True)
+    for it in range(8, 15):
+        axs[0,0].plot([it, it],[0,0.35], 'k-.', alpha=0.5)
+    axs[0,0].set_ylim([0.0, 0.4])
     i, j = 0, 0
     for hour in ['08', '09', '10', '11', '12', '13', '14']:
         i += 1       
@@ -142,20 +144,22 @@ for c in fp_list:
         axs[i,j].grid(True)
     
     
-lines = axs[0, 1].collections
-
-if len(labels) == 6:
-    legend=fig.legend(lines, labels, loc='upper center', ncol=3, bbox_to_anchor=(0.688, 0.96))
-    legend_edge_color = legend.get_frame().get_edgecolor()
-    fig.text(0.18, 0.901, 'Double attack - ' + tipo, fontsize=12,
-             bbox=dict(facecolor='white', edgecolor=legend_edge_color, boxstyle='round,pad=0.3'))
-else:
-    legend=fig.legend(lines, labels, loc='upper center', ncol=4, bbox_to_anchor=(0.674, 0.93))   
-    legend_edge_color = legend.get_frame().get_edgecolor() 
-    fig.text(0.18, 0.901, 'Single attack - ' + tipo, fontsize=12,
-             bbox=dict(facecolor='white', edgecolor=legend_edge_color, boxstyle='round,pad=0.3'))
-
-# fig.text(0.18, 0.901, 'Single attack - ' + tipo, fontsize=12)
-
-
-plt.savefig('figs/'+ file_name.split('.')[0] + '_' + tipo + '.pdf')
+    lines = axs[0, 1].collections
+    
+    if len(labels) == 6:
+        legend=fig.legend(lines, labels, loc='upper center', ncol=3, bbox_to_anchor=(0.688, 0.96))
+        legend_edge_color = legend.get_frame().get_edgecolor()
+        fig.text(0.18, 0.901, 'Double attack - ' + tipo, fontsize=12,
+                 bbox=dict(facecolor='white', edgecolor=legend_edge_color, boxstyle='round,pad=0.3'))
+    else:
+        legend=fig.legend(lines, labels, loc='upper center', ncol=4, bbox_to_anchor=(0.674, 0.93))   
+        legend_edge_color = legend.get_frame().get_edgecolor() 
+        fig.text(0.18, 0.901, 'Single attack - ' + tipo, fontsize=12,
+                 bbox=dict(facecolor='white', edgecolor=legend_edge_color, boxstyle='round,pad=0.3'))
+    
+    # fig.text(0.18, 0.901, 'Single attack - ' + tipo, fontsize=12)
+    
+    
+    plt.savefig('figs/'+ file_name.split('.')[0] + '_' + tipo + '_' + c + '.pdf')
+    plt.savefig('figs/'+ file_name.split('.')[0] + '_' + tipo + '_' + c + '.png')
+    plt.close()

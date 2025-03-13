@@ -6,15 +6,12 @@ from lib_timeseries import system_topology, system_measurements
 import matplotlib.gridspec as gridspec
 
 
-tipo = 'U'
-file_name = 'data_simus_ts_1ataque_KPI_antiguo.json'
-fp_list = ['090neg']
+tipo = 'P'
+# file_name = 'data_simus_ts_2ataques.json'
+file_name = 'data_simus_ts_1ataque.json'
+fp_list = ['090neg', '090pos', '100pos']
 
 
-# Leemos el json de resultados
-# with open(file_name,'r') as file:
-#     data = json.load(file)     
-    
 
 
 P_gen = list() 
@@ -51,36 +48,38 @@ with open(file_name,'r') as file:
 num_lmb = 50
 lmb_range = np.linspace(0.01, 25, num_lmb)
 
-fig = plt.figure(figsize=(12, 8))
-gs = gridspec.GridSpec(4, 2, height_ratios=[1.5, 1, 1, 1])  # Primera fila más alta
-plt.subplots_adjust(wspace=0.1, hspace=0.3)
-        
-ax = fig.add_subplot(gs[0, :])
-ax_pos = ax.get_position()
-ax.set_position([ax_pos.x0, ax_pos.y0 + 0.09, ax_pos.width, ax_pos.height * (1 / 1.5)])
 
-axs = np.empty((4, 2), dtype=object)  # Creamos una matriz vacía de objetos
-
-for i in range(3):
-    for j in range(2):
-        axs[i, j] = fig.add_subplot(gs[i+1, j]) 
-
-
-ax.stackplot(
-    list(range(1,24)), 
-    P_gen, 
-    alpha=0.7
-)
-ax.grid(True)
-for it in [8,10,13]:
-    ax.plot([it, it],[0,0.35], 'k-.', alpha=0.5)
-ax.set_ylim([0.0, 0.4])
-ax.set_xlim([0.0, 23])
-
-labels_time = ['8h', '10h', '13h']
 
 # Generamos los ataques para cada variable
 for c in fp_list:
+    fig = plt.figure(figsize=(12, 8))
+    gs = gridspec.GridSpec(4, 2, height_ratios=[1.5, 1, 1, 1])  # Primera fila más alta
+    plt.subplots_adjust(wspace=0.1, hspace=0.3)
+            
+    ax = fig.add_subplot(gs[0, :])
+    ax_pos = ax.get_position()
+    ax.set_position([ax_pos.x0, ax_pos.y0 + 0.09, ax_pos.width, ax_pos.height * (1 / 1.5)])
+
+    axs = np.empty((4, 2), dtype=object)  # Creamos una matriz vacía de objetos
+
+    for i in range(3):
+        for j in range(2):
+            axs[i, j] = fig.add_subplot(gs[i+1, j]) 
+
+
+    ax.stackplot(
+        list(range(1,24)), 
+        P_gen, 
+        alpha=0.7
+    )
+    ax.grid(True)
+    for it in [8,10,13]:
+        ax.plot([it, it],[0,0.35], 'k-.', alpha=0.5)
+    ax.set_ylim([0.0, 0.4])
+    ax.set_xlim([0.0, 23])
+
+    labels_time = ['8h', '10h', '13h']
+    
     i, j = -1, 0
     for hour in ['08', '10', '13']:
         i += 1       
@@ -184,26 +183,28 @@ for c in fp_list:
         axs[i,j].grid(True)
         axs[i,j+1].grid(True)
     
-lines = axs[1, 0].collections   
-# legend=fig.legend(lines, labels, loc='upper center', ncol=4, bbox_to_anchor=(0.674, 0.93))   
-   
+    lines = axs[1, 0].collections   
+    # legend=fig.legend(lines, labels, loc='upper center', ncol=4, bbox_to_anchor=(0.674, 0.93))   
+       
+        
+        
+    # Debajo del subplot de la primera fila, añadir el label "time (h)"
+    ax.set_xlabel("time (h)")
+    
+    # Mover la leyenda principal a 2 columnas y colocarla en posición (1, 0)
+    legend = fig.legend(lines, labels, loc='upper center', ncol=2, bbox_to_anchor=(0.255, 0.7))
+    legend_edge_color = legend.get_frame().get_edgecolor() 
+    
+    # Centrar el texto "Single attack - X" arriba del plot
+    fig.text(0.5, 0.92, 'Single attack - ' + tipo, fontsize=12, ha='center',
+             bbox=dict(facecolor='white', edgecolor=legend_edge_color, boxstyle='round,pad=0.3'))
     
     
-# Debajo del subplot de la primera fila, añadir el label "time (h)"
-ax.set_xlabel("time (h)")
-
-# Mover la leyenda principal a 2 columnas y colocarla en posición (1, 0)
-legend = fig.legend(lines, labels, loc='upper center', ncol=2, bbox_to_anchor=(0.255, 0.7))
-legend_edge_color = legend.get_frame().get_edgecolor() 
-
-# Centrar el texto "Single attack - X" arriba del plot
-fig.text(0.5, 0.92, 'Single attack - ' + tipo, fontsize=12, ha='center',
-         bbox=dict(facecolor='white', edgecolor=legend_edge_color, boxstyle='round,pad=0.3'))
-
-
-# Nueva leyenda encima del subplot en posición (1,1) para las métricas de precisión, recall y accuracy
-lines = axs[1, 1].lines   
-legend_metrics = fig.legend(lines, ['avg precision', 'avg recall', 'avg accuracy'], 
-                            loc='upper center', ncol=3, bbox_to_anchor=(0.67, 0.68))
-
-plt.savefig('figs/'+ file_name.split('.')[0] + '_' + tipo + '.pdf')
+    # Nueva leyenda encima del subplot en posición (1,1) para las métricas de precisión, recall y accuracy
+    lines = axs[1, 1].lines   
+    legend_metrics = fig.legend(lines, ['avg precision', 'avg recall', 'avg accuracy'], 
+                                loc='upper center', ncol=3, bbox_to_anchor=(0.67, 0.68))
+    
+    plt.savefig('figs/'+ file_name.split('.')[0] + '_' + tipo + '_' + c + '_KPI.pdf')
+    plt.savefig('figs/'+ file_name.split('.')[0] + '_' + tipo + '_' + c + '_KPI.pdf')
+    plt.close()
