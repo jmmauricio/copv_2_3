@@ -1,28 +1,26 @@
 from lib_timeseries import system_topology, system_measurements, system_constraints
 import lib
 import numpy as np
-import time
 import json 
+
+
+lambda_value = 2.5
 
 resultados = dict()
 
-t0 = time.time()
 minute = '00'
-path = ['../data/pv_2_3_180_', '../data_Cati/pv_2_3_180_']
+path = ['../../data/pv_2_3_180_', '../../data_Cati/pv_2_3_180_']
+
 for c in ['090neg', '090pos', '100pos']:    
     resultados[c] = dict()
     
-    for hour in ['08', '10', '13']:
-        print(hour)
-        print(time.time() - t0)
-        t0 = time.time()
-                  
+    for hour in ['10']:                          
             
         sheet_name = hour + '_' + minute + '_pf_' + c
         extended_path = [path[0] + hour + '_' + minute + '_pf_' + c + '/',
                          path[1] + hour + '_' + minute + '_pf_' + c + '/']
 
-        Nodes, Lines = system_topology('../data/pv_2_3.json')
+        Nodes, Lines = system_topology('../../data/pv_2_3.json')
         Meas, mjson, stdjson = system_measurements(extended_path, 
                                                    'measurements.json', 
                                                    'std_2.json', 
@@ -42,15 +40,15 @@ for c in ['090neg', '090pos', '100pos']:
         net = lib.grid(Nodes, Lines, Meas, Cons)
         
         n_simus = 1000
-        count = lib.identification_fun(lmb_min = 0.01, lmb_max = 10, lmb_num = 20, n_simus = n_simus, names = names, net_base = net)
+        range_n_att = [3,4,5,6]
+        count = lib.n_attacks(lambda_value = lambda_value, n_simus = n_simus, names = names, net_base = net, range_n_att=range_n_att)
         
-        for lambda_str in count.keys():
-            for medida_atacada in ['P', 'Q', 'U']:               
-                count[lambda_str][medida_atacada]['Precision'] = count[lambda_str][medida_atacada]['Precision']/n_simus
-                count[lambda_str][medida_atacada]['Accuracy'] = count[lambda_str][medida_atacada]['Accuracy']/n_simus
-                count[lambda_str][medida_atacada]['Recall'] = count[lambda_str][medida_atacada]['Recall']/n_simus
+        for n_attacks in range_n_att:               
+            count[str(lambda_value)][str(n_attacks)]['Precision'] = count[str(lambda_value)][str(n_attacks)]['Precision']/n_simus
+            count[str(lambda_value)][str(n_attacks)]['Accuracy'] = count[str(lambda_value)][str(n_attacks)]['Accuracy']/n_simus
+            count[str(lambda_value)][str(n_attacks)]['Recall'] = count[str(lambda_value)][str(n_attacks)]['Recall']/n_simus
         resultados[c][hour] = count
 
 
-with open('data_simus_ts_1ataque_KPI.json', 'w') as json_file:
+with open('data_n_attacks_KPI.json', 'w') as json_file:
     json.dump(resultados, json_file, indent=4)

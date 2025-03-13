@@ -54,7 +54,7 @@ for index_bandas, bandas in enumerate(bandas_array):
             net = lib.grid(Nodes, Lines, Meas, Cons)
             
             n_simus = 1000
-            count = lib.identification_fun(lmb_min = 0.01, lmb_max = 10, lmb_num = 20, n_simus = n_simus, names = names, net_base = net, num_attacks = 1, bandas = bandas)
+            count = lib.identification_fun(lmb_min = 0.01, lmb_max = 10, lmb_num = 20, n_simus = n_simus, names = names, net_base = net, bandas = bandas)
             
             for lambda_str in count.keys():
                 for medida_atacada in ['P', 'Q', 'U']:               

@@ -762,30 +762,22 @@ class measurement:
         
         
         
-def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, num_attacks, bandas):
+def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, bandas):
+    
+    num_attacks = 1
     
     # Establecemos el rango de valores de lambda
     lmb_range = np.linspace(lmb_min, lmb_max, lmb_num)
     
     # Diccionario de resultados
-    if num_attacks == 1:
-        count = {
-            str(lmb): {
-                'P': {'0': 0, '1': 0, '2': 0, '3': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
-                'Q': {'0': 0, '1': 0, '2': 0, '3': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
-                'U': {'0': 0, '1': 0, '2': 0, '3': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
-            }
-            for lmb in lmb_range
-        }  
-    if num_attacks == 2:
-        count = {
-            str(lmb): {
-                'P': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
-                'Q': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
-                'U': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
-            }
-            for lmb in lmb_range
-        }    
+    count = {
+        str(lmb): {
+            'P': {'0': 0, '1': 0, '2': 0, '3': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
+            'Q': {'0': 0, '1': 0, '2': 0, '3': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
+            'U': {'0': 0, '1': 0, '2': 0, '3': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
+        }
+        for lmb in lmb_range
+    }   
     
     # Nombre de las medidas a las que se puede atacar
     names_P = [names[index] for index in range(len(names)) if names[index].startswith('P_LV')]
@@ -850,74 +842,42 @@ def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, num_
                 if ataque.startswith('U'):
                     res_kpi = count[str(lmb_value)]['U']
                 
-                if num_attacks == 1:
-                    if num in result_rows:                           
-                        if len(result_rows) == 1:
-                            Res = '0' # 0 detecta   
-                            TP = 1
-                            TN = len(net.meas) - 1
-                            FN = 0
-                            FP = 0
-                        else:
-                            Res = '1' # 1 detecta y detecta alguno más incorrecto  
-                            TP = 1
-                            FN = len(result_rows) - 1
-                            TN = len(net.meas) - 1 - (len(result_rows) - 1) 
-                            FP = 0
+                if num in result_rows:                           
+                    if len(result_rows) == 1:
+                        Res = '0' # 0 detecta   
+                        TP = 1
+                        TN = len(net.meas) - 1
+                        FN = 0
+                        FP = 0
                     else:
-                        if len(result_rows) == 0:            
-                            Res = '3' # 3 no detecta nada
-                            FP = 1
-                            TN = len(net.meas) - 1
-                            FN = 0
-                            TP = 0          
-                        else:     
-                            Res = '2' # 2 detecta incorrecto
-                            FN = len(result_rows)
-                            TN = (len(net.meas) - len(result_rows)) - 1
-                            FP = 1
-                            TP = 0 
-                    if TP+FN == 0:
-                        res_kpi['Precision'] += 0
-                    else:
-                        res_kpi['Precision'] += TP/(TP+FP)
-                    if TP+FN == 0:
-                        res_kpi['Recall'] += 0
-                    else:
-                        res_kpi['Recall'] += TP/(TP+FN)
-                    res_kpi['Accuracy'] += (TP+TN)/(TP+TN+FP+FN)
+                        Res = '1' # 1 detecta y detecta alguno más incorrecto  
+                        TP = 1
+                        FN = len(result_rows) - 1
+                        TN = len(net.meas) - 1 - (len(result_rows) - 1) 
+                        FP = 0
+                else:
+                    if len(result_rows) == 0:            
+                        Res = '3' # 3 no detecta nada
+                        FP = 1
+                        TN = len(net.meas) - 1
+                        FN = 0
+                        TP = 0          
+                    else:     
+                        Res = '2' # 2 detecta incorrecto
+                        FN = len(result_rows)
+                        TN = (len(net.meas) - len(result_rows)) - 1
+                        FP = 1
+                        TP = 0 
+                if TP+FP == 0:
+                    res_kpi['Precision'] += 0
+                else:
+                    res_kpi['Precision'] += TP/(TP+FP)
+                if TP+FN == 0:
+                    res_kpi['Recall'] += 0
+                else:
+                    res_kpi['Recall'] += TP/(TP+FN)
+                res_kpi['Accuracy'] += (TP+TN)/(TP+TN+FP+FN)
                     
-            
-                if num_attacks == 2:
-                    if set(nums) == set(result_rows):  
-                        Res = '0'  # 0: detecta                           
-                        res_kpi['TP'] += 2
-                        res_kpi['TN'] += (len(net.meas) - 2)
-                    elif set(nums).issubset(set(result_rows)):  
-                        Res = '1'  # 1: detecta y detecta alguno más incorrecto                           
-                        res_kpi['TP'] += 2
-                        res_kpi['FN'] += (len(result_rows) - 2)
-                        res_kpi['TN'] += (len(net.meas) - 2 - (len(result_rows) - 2))
-                    elif any(n in result_rows for n in nums) and len(result_rows) == 1:
-                        Res = '2'  # 2: detecta uno de los dos                            
-                        res_kpi['TP'] += 1
-                        res_kpi['FP'] += 1  
-                        res_kpi['TN'] += (len(net.meas) - 2)
-                    elif any(n in result_rows for n in nums):
-                        Res = '3'  # 3: detecta uno de los dos y detecta alguno más incorrecto                           
-                        res_kpi['TP'] += 1
-                        res_kpi['FN'] += (len(result_rows) - 1)
-                        res_kpi['FP'] += 1  
-                        res_kpi['TN'] += (len(net.meas) - 1 - (len(result_rows) - 1))
-                    elif len(result_rows) == 0:
-                        Res = '4'  # 4: no detecta nada
-                        res_kpi['FP'] += 2
-                        res_kpi['TN'] += (len(net.meas) - 2)
-                    else:
-                        Res = '5'  # 5: detecta incorrecto
-                        res_kpi['FN'] += len(result_rows)
-                        res_kpi['FP'] += 2
-                        res_kpi['TN'] += (len(net.meas) - 4)
 
                 # Contamos
                 if ataque.startswith('P'):

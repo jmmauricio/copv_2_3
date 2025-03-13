@@ -1055,7 +1055,7 @@ def identification_fun_fixed_lmb_fixed_attack_2attacks(lambda_value, n_simus, na
                 TN = len(net.meas) - 4
                 FN = 2
                 FP = 2   
-            if TP+FN == 0:
+            if TP+FP == 0:
                 res_kpi['Precision'] += 0
             else:
                 res_kpi['Precision'] += TP/(TP+FP)
