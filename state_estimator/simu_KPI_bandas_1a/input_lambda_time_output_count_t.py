@@ -53,7 +53,7 @@ for index_bandas, bandas in enumerate(bandas_array):
             
             net = lib.grid(Nodes, Lines, Meas, Cons)
             
-            n_simus = 1000
+            n_simus = 250
             count = lib.identification_fun(lmb_min = 0.01, lmb_max = 10, lmb_num = 20, n_simus = n_simus, names = names, net_base = net, bandas = bandas)
             
             for lambda_str in count.keys():

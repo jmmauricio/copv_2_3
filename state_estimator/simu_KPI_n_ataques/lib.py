@@ -1230,7 +1230,7 @@ def identification_2attacks_combinacion(lambda_value, n_simus, names, net_base, 
     return count
 
     
-def n_attacks(lambda_value, n_simus, names, net_base, range_n_att):
+def n_attacks(lambda_value, n_simus, names, net_base, range_n_att, bandas):
     
     count = {
         str(lambda_value): {
@@ -1263,14 +1263,20 @@ def n_attacks(lambda_value, n_simus, names, net_base, range_n_att):
             for ataque in random_entries:
                 if ataque.startswith('P'):
                     num = names.index(ataque)
-                    magnitud = 0.8 + np.random.rand()*0.4
+                    magnitud1 = np.random.uniform(bandas['P'][0][0], bandas['P'][0][1])
+                    magnitud2 = np.random.uniform(bandas['P'][1][0], bandas['P'][1][1])
+                    magnitud = random.sample([magnitud1, magnitud2], 1)
                 if ataque.startswith('Q'):
                     num = names.index(ataque)
-                    magnitud = 0.8 + np.random.rand()*0.4
+                    magnitud1 = np.random.uniform(bandas['Q'][0][0], bandas['Q'][0][1])
+                    magnitud2 = np.random.uniform(bandas['Q'][1][0], bandas['Q'][1][1])
+                    magnitud = random.sample([magnitud1, magnitud2], 1)
                 if ataque.startswith('U'):
                     num = names.index(ataque)
-                    magnitud = 0.98 + np.random.rand()*0.04
-                net.meas[num].value = magnitud*net.meas[num].value
+                    magnitud1 = np.random.uniform(bandas['U'][0][0], bandas['U'][0][1])
+                    magnitud2 = np.random.uniform(bandas['U'][1][0], bandas['U'][1][1])
+                    magnitud = random.sample([magnitud1, magnitud2], 1)
+                net.meas[num].value = magnitud[0]*net.meas[num].value
                 nums.append(num)
                 
             # Corremos el estimador de estado
@@ -1281,21 +1287,24 @@ def n_attacks(lambda_value, n_simus, names, net_base, range_n_att):
             
             # Tratamos de identificar el ciber ataque
             n_cols = 3
-            if Q.shape[1] < n_cols:
-                result_rows = []  
-            else:
-                final_value_condition = Q[:, -1] < 1       
-                
-                def is_decreasing(row):
-                    last_values = row[-n_cols:]
-                    return np.all(np.diff(last_values) < 0)                
-                
-                filtered_rows = Q[final_value_condition]
-                if len(filtered_rows) > 0:
-                    decreasing_condition = np.array([is_decreasing(row) for row in filtered_rows])                                    
-                    result_rows = np.where(final_value_condition)[0][decreasing_condition].tolist()       
-                else:
+            try:
+                if Q.shape[1] < n_cols:
                     result_rows = []  
+                else:
+                    final_value_condition = Q[:, -1] < 1       
+                    
+                    def is_decreasing(row):
+                        last_values = row[-n_cols:]
+                        return np.all(np.diff(last_values) < 0)                
+                    
+                    filtered_rows = Q[final_value_condition]
+                    if len(filtered_rows) > 0:
+                        decreasing_condition = np.array([is_decreasing(row) for row in filtered_rows])                                    
+                        result_rows = np.where(final_value_condition)[0][decreasing_condition].tolist()       
+                    else:
+                        result_rows = []  
+            except:
+                result_rows = []  
                     
             
             # Clasificamos la identificación

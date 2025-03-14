@@ -40,8 +40,13 @@ for c in ['090neg', '090pos', '100pos']:
         net = lib.grid(Nodes, Lines, Meas, Cons)
         
         n_simus = 1000
-        range_n_att = [3,4,5,6]
-        count = lib.n_attacks(lambda_value = lambda_value, n_simus = n_simus, names = names, net_base = net, range_n_att=range_n_att)
+        range_n_att = list(range(3,19))
+        bandas = {
+            'P': ([0.8, 0.85], [1.15, 1.2]),
+            'Q': ([0.8, 0.85], [1.15, 1.2]),
+            'U': ([0.98, 0.985], [1.015, 1.02]),
+            }
+        count = lib.n_attacks(lambda_value = lambda_value, n_simus = n_simus, names = names, net_base = net, range_n_att=range_n_att, bandas = bandas)
         
         for n_attacks in range_n_att:               
             count[str(lambda_value)][str(n_attacks)]['Precision'] = count[str(lambda_value)][str(n_attacks)]['Precision']/n_simus
