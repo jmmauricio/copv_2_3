@@ -41,10 +41,15 @@ for c in ['090neg', '090pos', '100pos']:
         
         n_simus = 1000
         range_n_att = list(range(3,19))
+        # bandas = {
+        #     'P': ([0.8, 0.85], [1.15, 1.2]),
+        #     'Q': ([0.8, 0.85], [1.15, 1.2]),
+        #     'U': ([0.98, 0.985], [1.015, 1.02]),
+        #     }
         bandas = {
-            'P': ([0.8, 0.85], [1.15, 1.2]),
-            'Q': ([0.8, 0.85], [1.15, 1.2]),
-            'U': ([0.98, 0.985], [1.015, 1.02]),
+            'P': ([0.85, 0.9], [1.10, 1.15]),
+            'Q': ([0.85, 0.9], [1.10, 1.15]),
+            'U': ([0.985, 0.99], [1.010, 1.015]),
             }
         count = lib.n_attacks(lambda_value = lambda_value, n_simus = n_simus, names = names, net_base = net, range_n_att=range_n_att, bandas = bandas)
         
@@ -55,5 +60,5 @@ for c in ['090neg', '090pos', '100pos']:
         resultados[c][hour] = count
 
 
-with open('data_n_attacks_KPI.json', 'w') as json_file:
+with open('data_n_attacks_KPI_10_15.json', 'w') as json_file:
     json.dump(resultados, json_file, indent=4)
