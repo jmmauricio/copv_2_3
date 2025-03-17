@@ -16,7 +16,7 @@ fp_list = ['090neg', '090pos', '100pos']
 data_matrices = [np.zeros((num_indices, num_indices)) for _ in range(num_subplots)]
 
 
-file_name = f'data_n_attacks_KPI.json'
+file_name = f'data_n_attacks_KPI_15_20.json'
 if os.path.exists(file_name):
     with open(file_name, 'r') as file:
         data = json.load(file)
