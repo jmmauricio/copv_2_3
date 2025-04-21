@@ -83,7 +83,7 @@ class grid:
             if iteration >= niter:
                 Results = {'solution': [], 'residual': [], 'jacobian': [], 'Q': [], 'std_sol': None, 'max_res': None, 'rm_meas': []}
                 return Results
-            # Std of the RESIDUAL
+            # Std of the result
             if len(self.constrained_meas) == 0:
                 self.std_sol = self.H.dot(np.linalg.inv(self.G).dot(self.H.T))
             else:
@@ -91,9 +91,11 @@ class grid:
                               [self.C.T, np.zeros((self.C.shape[1], self.C.shape[1]))]])
                 U = np.linalg.inv(A)
                 E1 = U[:self.G.shape[0], :self.G.shape[1]]
-                Sxz = E1.dot(self.H.T).dot(self.W)
-                # self.std_sol = (np.eye(self.W.shape[0]) - self.H.dot(Sxz)).dot(np.linalg.inv(self.W)).dot( (np.eye(self.W.shape[0]) - self.H.dot(Sxz)).T )
-                self.std_sol = np.linalg.inv(self.W) - self.H.dot(E1.dot(self.H.T))
+                if Huber:
+                    self.std_sol = self.H @ E1 @ self.H.T @ self.Q @ self.W @ self.Q @ self.H @ E1.T @ self.H.T
+                else:
+                    self.std_sol = self.H @ E1 @ self.H.T @ self.W @ self.H @ E1.T @ self.H.T
+                
             self.std_sol = np.sqrt(np.diag(self.std_sol))
             Results['std_sol'] = self.std_sol
             self.norm_res()
@@ -763,173 +765,110 @@ class measurement:
         
         
         
-def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base, num_attacks):
-    
-    # Establecemos el rango de valores de lambda
-    lmb_range = np.linspace(lmb_min, lmb_max, lmb_num)
-    
+def identification_fun(n_simus, names, net_base, bandas):
+    # Data
+    lmb_value = 2.5
+    num_attacks = 1
+        
     # Diccionario de resultados
-    if num_attacks == 1:
-        count = {
-            str(lmb): {
-                'P': {'0': 0, '1': 0, '2': 0, '3': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
-                'Q': {'0': 0, '1': 0, '2': 0, '3': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
-                'U': {'0': 0, '1': 0, '2': 0, '3': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
-            }
-            for lmb in lmb_range
-        }  
-    if num_attacks == 2:
-        count = {
-            str(lmb): {
-                'P': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
-                'Q': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
-                'U': {'0': 0, '1': 0, '2': 0, '3': 0, '4': 0, '5': 0, 'Precision': 0, 'Accuracy' : 0, 'Recall': 0},
-            }
-            for lmb in lmb_range
-        }    
+    count = {        
+        'P': {'TP': [], 'TN': [], 'FP': [], 'FN': []},
+        'Q': {'TP': [], 'TN': [], 'FP': [], 'FN': []},
+        'U': {'TP': [], 'TN': [], 'FP': [], 'FN': []}
+    }   
     
     # Nombre de las medidas a las que se puede atacar
     names_P = [names[index] for index in range(len(names)) if names[index].startswith('P_LV')]
     names_Q = [names[index] for index in range(len(names)) if names[index].startswith('Q_LV')]
     names_U = [names[index] for index in range(len(names)) if names[index].startswith('U_LV')]    
     
-    # Para cada valor de lambda y cada tipo de ataque (P, Q o U) hacemos "n_simus" ataques
-    for lmb_value in lmb_range:
-        for names_ataque in [names_P, names_Q, names_U]:            
-            for _ in range(n_simus):     
-                # Hacemos una copia de red
-                net = copy.deepcopy(net_base)
-                
-                # Se escoge aleatoriamente a la medida que atacar (un único ataque)              
-                random_entries = random.sample(names_ataque, num_attacks)
-                
-                # Se establece la amplitud del ataque (+-20% en P y Q, +-2% en U)
-                nums = []
-                for ataque in random_entries:
+    # Para cada tipo de ataque (P, Q o U) hacemos "n_simus" ataques   
+    for names_ataque in [names_P, names_Q, names_U]:            
+        for _ in range(n_simus):     
+            # Hacemos una copia de red
+            net = copy.deepcopy(net_base)
+            
+            # Se escoge aleatoriamente a la medida que atacar (un único ataque)              
+            random_entries = random.sample(names_ataque, num_attacks)
+            
+            # Se establece la amplitud del ataque (+-20% en P y Q, +-2% en U)
+            nums = []
+            for ataque in random_entries:
+                flag = True
+                while (flag):
                     if ataque.startswith('P'):
                         num = names.index(ataque)
-                        magnitud = 0.8 + np.random.rand()*0.4
+                        magnitud = bandas['P'][0] + np.random.rand()*bandas['P'][1]
                     if ataque.startswith('Q'):
                         num = names.index(ataque)
-                        magnitud = 0.8 + np.random.rand()*0.4
+                        magnitud = bandas['Q'][0] + np.random.rand()*bandas['Q'][1]
                     if ataque.startswith('U'):
                         num = names.index(ataque)
-                        magnitud = 0.98 + np.random.rand()*0.04
-                    net.meas[num].value = magnitud*net.meas[num].value
-                    nums.append(num)
-                    
-                # Corremos el estimador de estado
-                Results_Huber = net.state_estimation(tol = 1e-4, niter = 50, Huber = True, lmb = lmb_value, rn = False)
-                
-                # Observamos las tendencias de Q
-                Q = np.array([list(Results_Huber['Q'][index]) for index in range(len(Results_Huber['Q']))]).T
-                
-                # Tratamos de identificar el ciber ataque
-                n_cols = 3
-                if Q.shape[1] < n_cols:
-                    result_rows = []  
-                else:
-                    final_value_condition = Q[:, -1] < 1       
-                    
-                    def is_decreasing(row):
-                        last_values = row[-n_cols:]
-                        return np.all(np.diff(last_values) < 0)                
-                    
-                    filtered_rows = Q[final_value_condition]
-                    if len(filtered_rows) > 0:
-                        decreasing_condition = np.array([is_decreasing(row) for row in filtered_rows])                                    
-                        result_rows = np.where(final_value_condition)[0][decreasing_condition].tolist()       
+                        magnitud = bandas['U'][0] + np.random.rand()*bandas['U'][1]
+                    # Comprobamos!!
+                    if np.abs(magnitud*net.meas[num].value - net.meas[num].value) < net.meas[num].std*3:# Si esta dentro de 3·sigma cambiar
+                        pass
                     else:
-                        result_rows = []  
-                        
+                        net.meas[num].value = magnitud*net.meas[num].value
+                        flag = False
                 
-                # Clasificamos la identificación
-                if ataque.startswith('P'):
-                    res_kpi = count[str(lmb_value)]['P']
-                if ataque.startswith('Q'):
-                    res_kpi = count[str(lmb_value)]['Q']
-                if ataque.startswith('U'):
-                    res_kpi = count[str(lmb_value)]['U']
+                nums.append(num)
                 
-                if num_attacks == 1:
-                    if num in result_rows:                           
-                        if len(result_rows) == 1:
-                            Res = '0' # 0 detecta   
-                            TP = 1
-                            TN = len(net.meas) - 1
-                            FN = 0
-                            FP = 0
-                        else:
-                            Res = '1' # 1 detecta y detecta alguno más incorrecto  
-                            TP = 1
-                            FN = len(result_rows) - 1
-                            TN = len(net.meas) - 1 - (len(result_rows) - 1) 
-                            FP = 0
-                    else:
-                        if len(result_rows) == 0:            
-                            Res = '3' # 3 no detecta nada
-                            FP = 1
-                            TN = len(net.meas) - 1
-                            FN = 0
-                            TP = 0          
-                        else:     
-                            Res = '2' # 2 detecta incorrecto
-                            FN = len(result_rows)
-                            TN = (len(net.meas) - len(result_rows)) - 1
-                            FP = 1
-                            TP = 0 
-                    if TP+FN == 0:
-                        res_kpi['Precision'] += 0
-                    else:
-                        res_kpi['Precision'] += TP/(TP+FP)
-                    if TP+FN == 0:
-                        res_kpi['Recall'] += 0
-                    else:
-                        res_kpi['Recall'] += TP/(TP+FN)
-                    res_kpi['Accuracy'] += (TP+TN)/(TP+TN+FP+FN)
-                    
+            # Corremos el estimador de estado
+            Results_Huber = net.state_estimation(tol = 1e-4, niter = 50, Huber = True, lmb = lmb_value, rn = False)
             
-                if num_attacks == 2:
-                    if set(nums) == set(result_rows):  
-                        Res = '0'  # 0: detecta                           
-                        res_kpi['TP'] += 2
-                        res_kpi['TN'] += (len(net.meas) - 2)
-                    elif set(nums).issubset(set(result_rows)):  
-                        Res = '1'  # 1: detecta y detecta alguno más incorrecto                           
-                        res_kpi['TP'] += 2
-                        res_kpi['FN'] += (len(result_rows) - 2)
-                        res_kpi['TN'] += (len(net.meas) - 2 - (len(result_rows) - 2))
-                    elif any(n in result_rows for n in nums) and len(result_rows) == 1:
-                        Res = '2'  # 2: detecta uno de los dos                            
-                        res_kpi['TP'] += 1
-                        res_kpi['FP'] += 1  
-                        res_kpi['TN'] += (len(net.meas) - 2)
-                    elif any(n in result_rows for n in nums):
-                        Res = '3'  # 3: detecta uno de los dos y detecta alguno más incorrecto                           
-                        res_kpi['TP'] += 1
-                        res_kpi['FN'] += (len(result_rows) - 1)
-                        res_kpi['FP'] += 1  
-                        res_kpi['TN'] += (len(net.meas) - 1 - (len(result_rows) - 1))
-                    elif len(result_rows) == 0:
-                        Res = '4'  # 4: no detecta nada
-                        res_kpi['FP'] += 2
-                        res_kpi['TN'] += (len(net.meas) - 2)
-                    else:
-                        Res = '5'  # 5: detecta incorrecto
-                        res_kpi['FN'] += len(result_rows)
-                        res_kpi['FP'] += 2
-                        res_kpi['TN'] += (len(net.meas) - 4)
-
-                # Contamos
-                if ataque.startswith('P'):
-                    count[str(lmb_value)]['P'] = res_kpi
-                    count[str(lmb_value)]['P'][Res] += 1
-                if ataque.startswith('Q'):
-                    count[str(lmb_value)]['Q'] = res_kpi
-                    count[str(lmb_value)]['Q'][Res] += 1
-                if ataque.startswith('U'):
-                    count[str(lmb_value)]['U'] = res_kpi
-                    count[str(lmb_value)]['U'][Res] += 1
+            # Observamos las tendencias de Q
+            Q = np.array([list(Results_Huber['Q'][index]) for index in range(len(Results_Huber['Q']))]).T
+            
+            # Tratamos de identificar el ciber ataque
+            n_cols = 3
+            if Q.shape[1] < n_cols:
+                result_rows = []  
+            else:
+                final_value_condition = Q[:, -1] < 1       
+                
+                def is_decreasing(row):
+                    last_values = row[-n_cols:]
+                    return np.all(np.diff(last_values) < 0)                
+                
+                filtered_rows = Q[final_value_condition]
+                if len(filtered_rows) > 0:
+                    decreasing_condition = np.array([is_decreasing(row) for row in filtered_rows])                                    
+                    result_rows = np.where(final_value_condition)[0][decreasing_condition].tolist()       
+                else:
+                    result_rows = []  
+                    
+             # Clasificamos la identificación
+            if ataque.startswith('P'):
+                res_final = count['P']
+            if ataque.startswith('Q'):
+                res_final = count['Q']
+            if ataque.startswith('U'):
+                res_final = count['U']
+            
+            for i in range(len(net.meas)):
+               is_attacked = i in nums # Attacked?               
+               is_identified = i in result_rows # Well-identified?
+               
+               value = Results_Huber['std_sol'][i]*100/net.meas[i].std # std
+               
+               # Classify the measurement and append to the appropriate list
+               if is_attacked and is_identified:
+                   res_final['TP'].append(value) 
+               elif not is_attacked and not is_identified:
+                   res_final['TN'].append(value)  
+               elif not is_attacked and is_identified:
+                   res_final['FP'].append(value) 
+               elif is_attacked and not is_identified:
+                   res_final['FN'].append(value)  
+                   
+            if ataque.startswith('P'):
+                count['P'] = res_final
+            if ataque.startswith('Q'):
+                count['Q'] = res_final
+            if ataque.startswith('U'):
+                count['U'] = res_final
+             
     return count
             
 
