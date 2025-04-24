@@ -134,12 +134,7 @@ class grid:
                     for index in range(len(self.original_meas)):
                         if self.original_meas[index]['id'] == ref and self.original_meas[index]['type'] == tipo and self.original_meas[index]['value'] == value and self.original_meas[index]['std'] == std:
                             Results['rm_meas'].append(index)
-                            break
-                    #############################################
-                    # A = list(np.array(self.res)*np.array([np.sqrt(item) for item in np.diag(self.W)]))
-                    # B = list(self.res)
-                    # C = np.array([list(np.array(A).T), list(np.array(B).T), list(np.array(self.res_norm).T)]).T
-                    #############################################                        
+                            break                    
                     if print_info:
                         print(f'Deleting {self.meas[max_index].__dict__}')
                     self.meas.pop(max_index)
@@ -276,7 +271,7 @@ class grid:
                 return x + delta_x
                 
     
-    def report(self, excel = False):
+    def report(self):
         for node in self.nodes:
             print(f'Node {node.name}: U = {node.V:.4f},\t  theta = {node.theta*180/np.pi:.3f}, \t Ix = {node.Ix:.3f}')
         print('')
@@ -290,76 +285,7 @@ class grid:
             else:
                 print(f'{m.tipo}-{str(m.line.nodes[0].name)+"-"+str(m.line.nodes[1].name) if hasattr(m,"line") else str(m.node.name):15s}: \t {np.sqrt(m.value):8.3f}  \t {np.sqrt(m.h()):8.3f}  \t {m.value-m.h():8.3f}')
         print('')
-        if excel:
-            self.generar_excel()
-    
-    def generate_excel(self, file_name="output.xlsx"):
-        node_data = {
-            'Node': [],
-            'Voltage (U)': [],
-            'Theta (degrees)': [],
-            'Current (Ix)': []
-        }
-
-        for node in self.nodes:
-            node_data['Node'].append(node.name)
-            node_data['Voltage (U)'].append(node.V) 
-            node_data['Theta (degrees)'].append(node.theta * 180 / np.pi)  
-            node_data['Current (Ix)'].append(node.Ix)
-
-        df_nodes = pd.DataFrame(node_data)
-
-        line_data = {
-            'Line': [],
-            'Current (Ix)': []
-        }
-
-        for line in self.lines:
-            line_name = f'{line.nodes[0].name}-{line.nodes[1].name}'
-            line_data['Line'].append(line_name)
-            line_data['Current (Ix)'].append(line.Ix)
-
-        df_lines = pd.DataFrame(line_data)
-
-        meas_data = {
-            'Measurement': [],
-            'Measured Value': [],
-            'Estimated Value': [],
-            'Residual': [],
-            'Std Solution': []
-        }
-
-        for index, m in enumerate(self.meas):
-            if m.tipo != 'i':
-                measurement_name = f'{m.tipo}-{str(m.line.nodes[0].name)}-{str(m.line.nodes[1].name)}' if hasattr(m, "line") else f'{m.tipo}-{m.node.name}'
-                measured_value = m.value
-                estimated_value = m.h()
-            else:
-                measurement_name = f'{m.tipo}-{str(m.line.nodes[0].name)}-{str(m.line.nodes[1].name)}' if hasattr(m, "line") else f'{m.tipo}-{m.node.name}'
-                measured_value = np.sqrt(m.value)
-                estimated_value = np.sqrt(m.h())
-
-            residual = measured_value - estimated_value
-            std_solution = self.std_sol[index, index]
-
-            meas_data['Measurement'].append(measurement_name)
-            meas_data['Measured Value'].append(measured_value)
-            meas_data['Estimated Value'].append(estimated_value)
-            meas_data['Residual'].append(residual)
-            meas_data['Std Solution'].append(std_solution)
-
-        # Convertir la información de las mediciones en un DataFrame
-        df_meas = pd.DataFrame(meas_data)
-
-        # Crear un archivo Excel con múltiples hojas
-        with pd.ExcelWriter(file_name, engine='openpyxl') as writer:
-            df_nodes.to_excel(writer, sheet_name='Nodes', index=False)
-            df_lines.to_excel(writer, sheet_name='Lines', index=False)
-            df_meas.to_excel(writer, sheet_name='Measurements', index=False)
-
-        print(f"Archivo Excel guardado como '{file_name}'")
-            
-         
+                 
 class node:
     def __init__(self, ref, name, B):
         self.ref = ref   
@@ -487,7 +413,7 @@ class measurement:
                 if item[0] != None:
                     self.dh[item[0]] = item[1]
                               
-    # Derivadas parciales        
+    # Partial derivatives        
     def Pij_Vi(self, line = None):
         Pij_Vi = list()
         if line == None:
@@ -707,12 +633,8 @@ class measurement:
         for neigh, line in zip(self.node.neigh, self.node.lines):
             Qi_thetaj.append(-self.node.V*neigh.V*(line.G*np.cos(self.node.theta - neigh.theta) + line.B*np.sin(self.node.theta - neigh.theta)))
         return Qi_thetaj
-    
-           
-    
-    
-    # Flujos
-        
+              
+    # Magnitudes      
     def Pi(self):   
         Pi = 0
         for neigh, line in zip(self.node.neigh, self.node.lines):
@@ -782,18 +704,12 @@ class measurement:
         
         
 # Building up functions        
-def system_topology(file):
-    
-    # Leemos los datos del fichero
+def system_topology(file, U_base = 20e3):    
     with open(file, 'r') as f:
-        data = json.load(f)
-        
-    # Definimos las magnitudes base
-    S_base_syst = data['system']['S_base'] 
-    U_base = 20e3
+        data = json.load(f)        
+    S_base_syst = data['system']['S_base']     
     Z_base = (U_base**2)/S_base_syst
-    
-    # Construimos la lista de nodos
+    # Nodes list
     Nodes = list()
     index = 0
     for item in data['buses']:
@@ -802,8 +718,7 @@ def system_topology(file):
                           'id': index, 
                           'B': 0} )
             index += 1
-        
-    # Construimos la lista de líneas
+    # Lines list
     Lines = list()
     index = 0
     for item in data['lines']:        
@@ -830,9 +745,8 @@ def system_topology(file):
                     'Transformer': False,
                     'rt': 1
                     })            
-            index += 1
-            
-    # Construimos la lista de trasnformadores    
+            index += 1            
+    # Transformers list
     index_lines = index 
     for index, item in enumerate(data['transformers']):
         Lines.append({
@@ -845,10 +759,8 @@ def system_topology(file):
             'Transformer': True,
             'rt': 1
             })
-
     return Nodes, Lines
             
-
 def system_constraints(Nodes):      
     nodenames = [node['name'] for node in Nodes]
     Cons = []
@@ -875,8 +787,7 @@ def system_constraints(Nodes):
                 'value': 0.0,
                 })
             index += 2
-    return Cons    
-
+    return Cons   
 
 def system_measurements(file, Nodes, Lines, add_noise = False, corrientes = True):
     
@@ -899,7 +810,6 @@ def system_measurements(file, Nodes, Lines, add_noise = False, corrientes = True
             epsilon_i_mag = np.interp(value, Iclass[0], Iclass[1])
             epsilon_i_ang = np.interp(value, Iclass[0], Iclass[2])
             data_std[key] = [epsilon_i_mag*data[key]/200, epsilon_i_ang*np.pi/(60*180)]
-
     for key in data_std:
         if key.startswith('P'):
             I_pointer = [key_aux for key_aux in data_std if key_aux.startswith('I_' + key.split('_')[1])][0]
@@ -913,13 +823,16 @@ def system_measurements(file, Nodes, Lines, add_noise = False, corrientes = True
             P_pointer = 'P_' + key[2:]
             Q_pointer = key
             data_std[key] = np.sqrt((data[P_pointer]**2)*(data_std[U_pointer][1]**2 + data_std[I_pointer][1]**2) + (data[Q_pointer]**2)*((data_std[I_pointer][0]/data[I_pointer])**2 + (data_std[U_pointer][0]/data[U_pointer])**2))
+    for key in data_std:
+        if isinstance(data_std[key], list):
+            data_std[key] = data_std[key][0]
             
-    # Construimos la lista de medidas
+    # List of measurements
     Meas = list()
     index_meas_id = 0
     for index_meas, item in enumerate(data.keys()):
         modified_item = item.split('_')
-        # Si se trata de una medida en un nodo
+        # Measurement at node
         if len(modified_item) == 2:
             N = [d.get('id') if d.get('name') == modified_item[1] else -1 for d in Nodes]
             N.sort()
@@ -933,7 +846,7 @@ def system_measurements(file, Nodes, Lines, add_noise = False, corrientes = True
                 'std': data_std[item]
                 })     
             index_meas_id += 1
-        # Si se trata de una medida en una línea
+        # Measurement at line
         if len(modified_item) == 3:
             for l in Lines:
                 if l['From'] == modified_item[1] and l['To'] == modified_item[2]:
@@ -965,28 +878,27 @@ def identification_fun(n_simus, names, net_base, bandas):
     lmb_value = 2.5
     num_attacks = 1
         
-    # Diccionario de resultados
+    # Results
     count = {        
         'P': {'TP': [], 'TN': [], 'FP': [], 'FN': []},
         'Q': {'TP': [], 'TN': [], 'FP': [], 'FN': []},
         'U': {'TP': [], 'TN': [], 'FP': [], 'FN': []}
     }   
     
-    # Nombre de las medidas a las que se puede atacar
-    names_P = [names[index] for index in range(len(names)) if names[index].startswith('P_LV')]
-    names_Q = [names[index] for index in range(len(names)) if names[index].startswith('Q_LV')]
-    names_U = [names[index] for index in range(len(names)) if names[index].startswith('U_LV')]    
+    # Classification of the measurements to be attacked
+    names_P = [names[index] for index in range(len(names)) if names[index].startswith('P')]
+    names_Q = [names[index] for index in range(len(names)) if names[index].startswith('Q')]
+    names_U = [names[index] for index in range(len(names)) if names[index].startswith('U')]    
     
-    # Para cada tipo de ataque (P, Q o U) hacemos "n_simus" ataques   
+    # For each type of attack (P, Q o U) we perform "n_simus" attacks   
     for names_ataque in [names_P, names_Q, names_U]:            
         for _ in range(n_simus):     
-            # Hacemos una copia de red
             net = copy.deepcopy(net_base)
             
-            # Se escoge aleatoriamente a la medida que atacar (un único ataque)              
+            # Random choice of the measurement to be attacked             
             random_entries = random.sample(names_ataque, num_attacks)
             
-            # Se establece la amplitud del ataque (+-20% en P y Q, +-2% en U)
+            # We establish the amplitude of the attack based on "bandas"
             nums = []
             for ataque in random_entries:
                 flag = True
@@ -1009,13 +921,11 @@ def identification_fun(n_simus, names, net_base, bandas):
                 
                 nums.append(num)
                 
-            # Corremos el estimador de estado
+            # Running Huber state estimator
             Results_Huber = net.state_estimation(tol = 1e-4, niter = 50, Huber = True, lmb = lmb_value, rn = False)
             
-            # Observamos las tendencias de Q
-            Q = np.array([list(Results_Huber['Q'][index]) for index in range(len(Results_Huber['Q']))]).T
-            
-            # Tratamos de identificar el ciber ataque
+            # Identification of the attack
+            Q = np.array([list(Results_Huber['Q'][index]) for index in range(len(Results_Huber['Q']))]).T 
             n_cols = 3
             if Q.shape[1] < n_cols:
                 result_rows = []  
