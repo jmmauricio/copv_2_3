@@ -880,20 +880,26 @@ def identification_fun(n_simus, names, net_base, bandas):
         
     # Results
     count = {        
-        'P': {'TP': [], 'TN': [], 'FP': [], 'FN': []},
-        'Q': {'TP': [], 'TN': [], 'FP': [], 'FN': []},
-        'U': {'TP': [], 'TN': [], 'FP': [], 'FN': []}
+        'P': {'Precision': 0, 'Accuracy': 0, 'Recall': 0, 'norm2': 0, 'norminf': 0},
+        'Q': {'Precision': 0, 'Accuracy': 0, 'Recall': 0, 'norm2': 0, 'norminf': 0},
+        'U': {'Precision': 0, 'Accuracy': 0, 'Recall': 0, 'norm2': 0, 'norminf': 0},
+        'I': {'Precision': 0, 'Accuracy': 0, 'Recall': 0, 'norm2': 0, 'norminf': 0}
     }   
     
     # Classification of the measurements to be attacked
     names_P = [names[index] for index in range(len(names)) if names[index].startswith('P')]
     names_Q = [names[index] for index in range(len(names)) if names[index].startswith('Q')]
-    names_U = [names[index] for index in range(len(names)) if names[index].startswith('U')]    
+    names_U = [names[index] for index in range(len(names)) if names[index].startswith('U')]   
+    names_I = [names[index] for index in range(len(names)) if names[index].startswith('I')]    
     
     # For each type of attack (P, Q o U) we perform "n_simus" attacks   
-    for names_ataque in [names_P, names_Q, names_U]:            
+    for names_ataque in [names_P, names_Q, names_U, names_I]:            
         for _ in range(n_simus):     
             net = copy.deepcopy(net_base)
+            
+            # Solving state estimation without attacks
+            Results_clean = net.state_estimation(tol = 1e-4, niter = 50, Huber = True, lmb = lmb_value, rn = False)
+            x_clean = Results_clean['solution'][-1][14:]
             
             # Random choice of the measurement to be attacked             
             random_entries = random.sample(names_ataque, num_attacks)
@@ -901,28 +907,21 @@ def identification_fun(n_simus, names, net_base, bandas):
             # We establish the amplitude of the attack based on "bandas"
             nums = []
             for ataque in random_entries:
-                flag = True
-                while (flag):
-                    if ataque.startswith('P'):
-                        num = names.index(ataque)
-                        magnitud = bandas['P'][0] + np.random.rand()*bandas['P'][1]
-                    if ataque.startswith('Q'):
-                        num = names.index(ataque)
-                        magnitud = bandas['Q'][0] + np.random.rand()*bandas['Q'][1]
-                    if ataque.startswith('U'):
-                        num = names.index(ataque)
-                        magnitud = bandas['U'][0] + np.random.rand()*bandas['U'][1]
-                    # Comprobamos!!
-                    if np.abs(magnitud*net.meas[num].value - net.meas[num].value) < net.meas[num].std*3:# Si esta dentro de 3·sigma cambiar
-                        pass
-                    else:
-                        net.meas[num].value = magnitud*net.meas[num].value
-                        flag = False
-                
+                if ataque.startswith('P'):
+                    num = names.index(ataque)
+                    magnitud = bandas['P'][0] + np.random.rand()*bandas['P'][1]
+                if ataque.startswith('Q'):
+                    num = names.index(ataque)
+                    magnitud = bandas['Q'][0] + np.random.rand()*bandas['Q'][1]
+                if ataque.startswith('U'):
+                    num = names.index(ataque)
+                    magnitud = bandas['U'][0] + np.random.rand()*bandas['U'][1]
+                net.meas[num].value = magnitud*net.meas[num].value                    
                 nums.append(num)
                 
             # Running Huber state estimator
             Results_Huber = net.state_estimation(tol = 1e-4, niter = 50, Huber = True, lmb = lmb_value, rn = False)
+            x_Huber = Results_Huber['solution'][-1][14:]
             
             # Identification of the attack
             Q = np.array([list(Results_Huber['Q'][index]) for index in range(len(Results_Huber['Q']))]).T 
@@ -943,35 +942,56 @@ def identification_fun(n_simus, names, net_base, bandas):
                 else:
                     result_rows = []  
                     
-             # Clasificamos la identificación
-            if ataque.startswith('P'):
-                res_final = count['P']
-            if ataque.startswith('Q'):
-                res_final = count['Q']
-            if ataque.startswith('U'):
-                res_final = count['U']
-            
+             # Clasificamos la identificación            
+            TP, TN, FP, FN = 0, 0, 0, 0
             for i in range(len(net.meas)):
                is_attacked = i in nums # Attacked?               
-               is_identified = i in result_rows # Well-identified?
-               
-               value = Results_Huber['std_sol'][i]*100/net.meas[i].std # std
+               is_identified = i in result_rows # Well-identified?               
                
                # Classify the measurement and append to the appropriate list
                if is_attacked and is_identified:
-                   res_final['TP'].append(value) 
+                   TP += 1
                elif not is_attacked and not is_identified:
-                   res_final['TN'].append(value)  
+                   TN += 1
                elif not is_attacked and is_identified:
-                   res_final['FP'].append(value) 
+                   FP += 1
                elif is_attacked and not is_identified:
-                   res_final['FN'].append(value)  
+                   FN += 1
                    
+            Precision = TP/(TP+FP) if TP + FP !=0 else 0
+            Recall = TP/(TP+FN) if TP + FN !=0 else 0
+            Accuracy = (TP+TN)/(TP+TN+FP+FN)
+            
             if ataque.startswith('P'):
-                count['P'] = res_final
+                count['P']['Precision'] += Precision
+                count['P']['Recall'] += Recall
+                count['P']['Accuracy'] += Accuracy
+                count['P']['norm2'] += np.linalg.norm(x_clean - x_Huber, 2)
+                count['P']['norminf'] += np.linalg.norm(x_clean - x_Huber, np.inf)
             if ataque.startswith('Q'):
-                count['Q'] = res_final
+                count['Q']['Precision'] += Precision
+                count['Q']['Recall'] += Recall
+                count['Q']['Accuracy'] += Accuracy
+                count['Q']['norm2'] += np.linalg.norm(x_clean - x_Huber, 2)
+                count['Q']['norminf'] += np.linalg.norm(x_clean - x_Huber, np.inf)
             if ataque.startswith('U'):
-                count['U'] = res_final
+                count['U']['Precision'] += Precision
+                count['U']['Recall'] += Recall
+                count['U']['Accuracy'] += Accuracy  
+                count['U']['norm2'] += np.linalg.norm(x_clean - x_Huber, 2)
+                count['U']['norminf'] += np.linalg.norm(x_clean - x_Huber, np.inf)          
+            if ataque.startswith('I'):
+                count['I']['Precision'] += Precision
+                count['I']['Recall'] += Recall
+                count['I']['Accuracy'] += Accuracy
+                count['I']['norm2'] += np.linalg.norm(x_clean - x_Huber, 2)
+                count['I']['norminf'] += np.linalg.norm(x_clean - x_Huber, np.inf)
+    
+    for item in ['P', 'Q', 'U', 'I']:
+        count[item]['Precision'] = count[item]['Precision']/(n_simus)
+        count[item]['Recall'] = count[item]['Recall']/(n_simus)
+        count[item]['Accuracy'] = count[item]['Accuracy']/(n_simus)  
+        count[item]['norm2'] = count[item]['norm2']/(n_simus)  
+        count[item]['norminf'] = count[item]['norminf']/(n_simus)    
              
     return count

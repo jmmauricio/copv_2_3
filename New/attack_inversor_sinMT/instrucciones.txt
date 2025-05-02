@@ -1,0 +1,5 @@
+Lambda 2.5
+Se quitan medidas de MT
+Se ataca 100 veces cada medida de P, Q, U
+
+Hay que ver que hacer cuando los KPI llegan a una indeterminación
