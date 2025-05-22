@@ -339,6 +339,7 @@ class measurement:
             for n in nodes:
                 if n.ref == node_id:
                     self.node = n
+                    self.node_name = n.name
                     n.meas.append(self)
                     break
         if line_id is not None:
@@ -350,6 +351,7 @@ class measurement:
             for l in lines:
                 if l.ref == line_id:
                     self.line = l
+                    self.line_name = l.nodes[0].name + '-' + l.nodes[1].name 
                     l.meas.append(self)
                     break        
         if hasattr(self, 'node'):
@@ -880,10 +882,10 @@ def identification_fun(n_simus, names, net_base, bandas):
         
     # Results
     count = {        
-        'P': {'Precision': 0, 'Accuracy': 0, 'Recall': 0, 'norm2': 0, 'norminf': 0},
-        'Q': {'Precision': 0, 'Accuracy': 0, 'Recall': 0, 'norm2': 0, 'norminf': 0},
-        'U': {'Precision': 0, 'Accuracy': 0, 'Recall': 0, 'norm2': 0, 'norminf': 0},
-        'I': {'Precision': 0, 'Accuracy': 0, 'Recall': 0, 'norm2': 0, 'norminf': 0}
+        'P': {'Precision': 0, 'Accuracy': 0, 'Recall': 0, 'F1': 0, 'norm2': 0, 'norminf': 0, 'z': 0},
+        'Q': {'Precision': 0, 'Accuracy': 0, 'Recall': 0, 'F1': 0, 'norm2': 0, 'norminf': 0, 'z': 0},
+        'U': {'Precision': 0, 'Accuracy': 0, 'Recall': 0, 'F1': 0, 'norm2': 0, 'norminf': 0, 'z': 0},
+        'I': {'Precision': 0, 'Accuracy': 0, 'Recall': 0, 'F1': 0, 'norm2': 0, 'norminf': 0, 'z': 0}
     } 
     
     # Classification of the measurements to be attacked
@@ -900,7 +902,7 @@ def identification_fun(n_simus, names, net_base, bandas):
             # Solving state estimation without attacks
             Results_clean = net.state_estimation(tol = 1e-4, niter = 50, Huber = True, lmb = lmb_value, rn = False)
             x_clean = Results_clean['solution'][-1][14:]
-            
+                        
             # Random choice of the measurement to be attacked             
             random_entries = random.sample(names_ataque, num_attacks)
             
@@ -919,12 +921,15 @@ def identification_fun(n_simus, names, net_base, bandas):
                 if ataque.startswith('I'):
                     num = names.index(ataque)
                     magnitud = bandas['I'][0] + np.random.rand()*bandas['I'][1]
+                z_exacta = net.meas[num].value
                 net.meas[num].value = magnitud*net.meas[num].value                
                 nums.append(num)
+            
                 
             # Running Huber state estimator
             Results_Huber = net.state_estimation(tol = 1e-4, niter = 50, Huber = True, lmb = lmb_value, rn = False)
             x_Huber = Results_Huber['solution'][-1][14:]
+            z_estimada = net.meas[num].h()
             
             # Identification of the attack
             Q = np.array([list(Results_Huber['Q'][index]) for index in range(len(Results_Huber['Q']))]).T 
@@ -964,37 +969,50 @@ def identification_fun(n_simus, names, net_base, bandas):
             Precision = TP/(TP+FP) if TP + FP !=0 else 0
             Recall = TP/(TP+FN) if TP + FN !=0 else 0
             Accuracy = (TP+TN)/(TP+TN+FP+FN)
+            F1 = 2*Precision*Recall/(Precision + Recall) if Precision + Recall !=0 else 0
+            z = abs(z_estimada - z_exacta)
+            
             
             if ataque.startswith('P'):
                 count['P']['Precision'] += Precision
                 count['P']['Recall'] += Recall
                 count['P']['Accuracy'] += Accuracy
-                count['P']['norm2'] += np.linalg.norm(x_clean - x_Huber, 2)
+                count['P']['F1'] += F1
+                count['P']['norm2'] += np.linalg.norm(x_clean - x_Huber, 2)/len(x_clean)
                 count['P']['norminf'] += np.linalg.norm(x_clean - x_Huber, np.inf)
+                count['P']['z'] += z
             if ataque.startswith('Q'):
                 count['Q']['Precision'] += Precision
                 count['Q']['Recall'] += Recall
                 count['Q']['Accuracy'] += Accuracy
-                count['Q']['norm2'] += np.linalg.norm(x_clean - x_Huber, 2)
+                count['Q']['F1'] += F1
+                count['Q']['norm2'] += np.linalg.norm(x_clean - x_Huber, 2)/len(x_clean)
                 count['Q']['norminf'] += np.linalg.norm(x_clean - x_Huber, np.inf)
+                count['Q']['z'] += z
             if ataque.startswith('U'):
                 count['U']['Precision'] += Precision
                 count['U']['Recall'] += Recall
                 count['U']['Accuracy'] += Accuracy
-                count['U']['norm2'] += np.linalg.norm(x_clean - x_Huber, 2)
-                count['U']['norminf'] += np.linalg.norm(x_clean - x_Huber, np.inf)             
+                count['U']['F1'] += F1
+                count['U']['norm2'] += np.linalg.norm(x_clean - x_Huber, 2)/len(x_clean)
+                count['U']['norminf'] += np.linalg.norm(x_clean - x_Huber, np.inf)  
+                count['U']['z'] += z           
             if ataque.startswith('I'):
                 count['I']['Precision'] += Precision
                 count['I']['Recall'] += Recall
                 count['I']['Accuracy'] += Accuracy
-                count['I']['norm2'] += np.linalg.norm(x_clean - x_Huber, 2)
+                count['I']['F1'] += F1
+                count['I']['norm2'] += np.linalg.norm(x_clean - x_Huber, 2)/len(x_clean)
                 count['I']['norminf'] += np.linalg.norm(x_clean - x_Huber, np.inf)
+                count['I']['z'] += z
         
     for item in ['P', 'Q', 'U', 'I']:
         count[item]['Precision'] = count[item]['Precision']/(n_simus)
         count[item]['Recall'] = count[item]['Recall']/(n_simus)
         count[item]['Accuracy'] = count[item]['Accuracy']/(n_simus)  
+        count[item]['F1'] = count[item]['F1']/(n_simus)  
         count[item]['norm2'] = count[item]['norm2']/(n_simus)  
-        count[item]['norminf'] = count[item]['norminf']/(n_simus)    
+        count[item]['norminf'] = count[item]['norminf']/(n_simus)  
+        count[item]['z'] = count[item]['z']/(n_simus)    
              
     return count

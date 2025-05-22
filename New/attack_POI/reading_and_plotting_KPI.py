@@ -27,7 +27,7 @@ for index_bandas, bandas in enumerate(bandas_array):
 bands = list(range(8))  # 0 to 7
 
 # Metrics and categories
-metrics = ['Precision', 'Accuracy', 'Recall']
+metrics = ['Precision', 'Recall', 'F1']
 categories = ['08', '10', '13']
 x_label = ['80-85%', '85-90%', '90-95%', '95-100%', '100-105%', '105-110%', '110-115%', '115-120%']
 
@@ -35,7 +35,7 @@ x_label = ['80-85%', '85-90%', '90-95%', '95-100%', '100-105%', '105-110%', '110
 bar_width = 0.2
 
 # Create a figure and subplots
-fig, axes = plt.subplots(5, 3, figsize=(12, 10))
+fig, axes = plt.subplots(6, 3, figsize=(12, 10))
 
 # Loop through each category (columns: '08', '10', '13')
 for col_idx, category in enumerate(categories):
@@ -73,9 +73,9 @@ for col_idx, category in enumerate(categories):
             if row_idx == 0:
                 ax.set_ylabel('Precision (%)')
             if row_idx == 1:
-                ax.set_ylabel('Accuarcy (%)')
-            if row_idx == 2:
                 ax.set_ylabel('Recall (%)')
+            if row_idx == 2:
+                ax.set_ylabel('F1 (%)')
         
         if row_idx == 0:
             if col_idx == 0:
@@ -92,16 +92,20 @@ for col_idx, category in enumerate(categories):
         ax.set_ylim([-2, 102])
         
 # KPIs
-axes[4,0].set_xticks(x_positions) 
-axes[4,1].set_xticks(x_positions) 
-axes[4,2].set_xticks(x_positions)        
-axes[4,0].set_xticklabels(x_label, rotation=45) 
-axes[4,1].set_xticklabels(x_label, rotation=45) 
-axes[4,2].set_xticklabels(x_label, rotation=45) 
+axes[5,0].set_xticks(x_positions) 
+axes[5,1].set_xticks(x_positions) 
+axes[5,2].set_xticks(x_positions)        
+axes[5,0].set_xticklabels(x_label, rotation=45) 
+axes[5,1].set_xticklabels(x_label, rotation=45) 
+axes[5,2].set_xticklabels(x_label, rotation=45) 
 
 for col_idx, category in enumerate(categories):
-    for row_idx, metric in enumerate(['norm2', 'norminf']):
+    for row_idx, metric in enumerate(['norm2', 'norminf', 'z']):
         ax = axes[row_idx+3, col_idx]
+        
+        if row_idx == 0:            
+            ax.set_xticks(x_positions)
+            ax.set_xticklabels([])
         
         # Collect values for P, Q, U, I across all bands
         p_values = []
@@ -118,10 +122,6 @@ for col_idx, category in enumerate(categories):
            
         x_positions = np.arange(len(bands))
         
-        if row_idx == 0:            
-            ax.set_xticks(x_positions)
-            ax.set_xticklabels([])
-        
         # Plot bars for P, Q, U, I
         ax.bar(x_positions - 3*bar_width/2, p_values, width=bar_width, label='P', color=colores[0])
         ax.bar(x_positions - bar_width/2, q_values, width=bar_width, label='Q', color=colores[1])
@@ -129,12 +129,20 @@ for col_idx, category in enumerate(categories):
         ax.bar(x_positions + 3*bar_width/2, i_values, width=bar_width, label='I', color=colores[3]) 
        
         ax.grid(True)
-        ax.set_ylim([0, 0.3])
+        
+        if row_idx == 0:
+            ax.set_ylim([0, 0.1])
+        if row_idx == 1:                
+            ax.set_ylim([0, 0.3])
+        if row_idx == 2:                
+            ax.set_ylim([0, 2])
        
-axes[3,0].set_ylabel('$||\,v-\hat{v}\,||_2$')  
-axes[4,0].set_ylabel('$||\,v-\hat{v}\,||_{\infty}$')        
+axes[3,0].set_ylabel('$||\,v-\hat{v}\,||_2$ (%)')  
+axes[4,0].set_ylabel('$||\,v-\hat{v}\,||_{\infty}$ (%)') 
+axes[5,0].set_ylabel('$|\,z-\hat{z}\,|$ (%)')        
        
 # Adjust layout and show the plot
+fig.align_ylabels(axes)
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 plt.show()
 plt.savefig('figs/bands_poi_' + cosphi + '.pdf')
