@@ -159,7 +159,7 @@ match tipo:
 if tipo == 'U':
     net.constrained_meas.append(lib.measurement(id_ref, node, None, tipo, amplitude*actual_state, 0, net.nodes, net.lines, net.n))
 else:
-    net.constrained_meas.append(lib.measurement(id_ref, line, None, tipo, amplitude*actual_state, 0, net.nodes, net.lines, net.n))
+    net.constrained_meas.append(lib.measurement(id_ref, None, line, tipo, amplitude*actual_state, 0, net.nodes, net.lines, net.n))
 net.meas[nmeas].value = amplitude*actual_state
 
 # Printing all the constraints      
@@ -191,9 +191,9 @@ for item in zip(meas_at, solution['z_output']):
             print(f"{item[0]['type']}({net.nodes[item[0]['node']].name}): \t\t\t {item[0]['value']:.3f} --> {item[1]:.3f}")
     else:
         if item[0]['id'] in meas_attacked:
-            print(f"**{item[0]['type']}({net.lines[item[0]['line']].nodes[0].name}-{net.lines[item[0]['line']].nodes[1].name}): \t {item[0]['value']:.3f} --> {item[1]:.3f}")
+            print(f"**{item[0]['type']}({net.lines[abs(item[0]['line'])].nodes[0].name}-{net.lines[abs(item[0]['line'])].nodes[1].name}): \t {item[0]['value']:.3f} --> {item[1]:.3f}")
         else:
-            print(f"{item[0]['type']}({net.lines[item[0]['line']].nodes[0].name}-{net.lines[item[0]['line']].nodes[1].name}): \t {item[0]['value']:.3f} --> {item[1]:.3f}")
+            print(f"{item[0]['type']}({net.lines[abs(item[0]['line'])].nodes[0].name}-{net.lines[abs(item[0]['line'])].nodes[1].name}): \t {item[0]['value']:.3f} --> {item[1]:.3f}")
     optimal_index += (item[0]['value'] - item[1])**2
     
     

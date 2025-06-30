@@ -4,7 +4,7 @@ import json
 import os
 
 case = 0
-percent = 15
+percent = 5
 
 # Taking the information about the network
 path_topology = '../../../data/pv_2_3.json'

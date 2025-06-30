@@ -12,32 +12,14 @@ class grid:
             nodes, lines = system_topology(path_topology)
             constraints = system_constraints(nodes)
             meas = system_measurements(path_measurements, nodes, lines, add_noise = False)  
-            if not MT:
-                if PSM:
-                    # Suma de los de abajo
-                    meas[28]['value'] = - (meas[12]['value'] + meas[16]['value'] + meas[20]['value'])
-                    meas[28]['std'] = np.sqrt( meas[12]['std']**2 + meas[16]['std']**2 + meas[20]['std']**2 )
-                    meas[24]['value'] = - (meas[0]['value'] + meas[4]['value'] + meas[8]['value'])
-                    meas[24]['std'] = np.sqrt( meas[0]['std']**2 + meas[4]['std']**2 + meas[8]['std']**2 )
-                    # División de los de arriba
-                    meas[30] = meas[28]
-                    meas[29] = meas[24]
-                    meas[30]['value'] = meas[31]['value']/2
-                    meas[29]['value'] = meas[31]['value']/2
-                    meas[30]['std'] = meas[31]['std']/2
-                    meas[29]['std'] = meas[31]['std']/2
-                    # Borramos las medidas no usadas
-                    meas.pop(27) 
-                    meas.pop(26) 
-                    meas.pop(25) 
-                else:                    
-                    meas.pop(30) 
-                    meas.pop(29) 
-                    meas.pop(28)  
-                    meas.pop(27) 
-                    meas.pop(26) 
-                    meas.pop(25)       
-                    meas.pop(24)
+            if not MT:                 
+                meas.pop(30) 
+                meas.pop(29) 
+                meas.pop(28)  
+                meas.pop(27) 
+                meas.pop(26) 
+                meas.pop(25)       
+                meas.pop(24)
             # Renumbering the measurements references
             for index, m in enumerate(meas):
                 meas[index]['id'] = index            
@@ -55,6 +37,26 @@ class grid:
             self.constrained_meas = [measurement(item['id'], item['node'], item['line'], item['type'], item['value'], 0, self.nodes, self.lines, self.n) for index, item in enumerate(self.constraints)] 
             self.data = [meas, constraints]
         elif nodes and lines and meas and constraints:
+            if PSM:
+                # Suma de los de abajo
+                last_id = meas[-1]['id']
+                value = - (meas[12]['value'] + meas[16]['value'] + meas[20]['value'])
+                std = np.sqrt( meas[12]['std']**2 + meas[16]['std']**2 + meas[20]['std']**2 )
+                meas.append({'id': last_id+1, 'node': None, 'line': -8, 'type': 'P', 'value': value, 'std': std})
+                value = - (meas[0]['value'] + meas[4]['value'] + meas[8]['value'])
+                std = np.sqrt( meas[0]['std']**2 + meas[4]['std']**2 + meas[8]['std']**2 )
+                meas.append({'id': last_id+2, 'node': None, 'line': -2, 'type': 'P', 'value': value, 'std':std })
+            
+                # División de los de arriba
+                last_id = last_id + 2
+                value = meas[24]['value']/2
+                std = meas[24]['std']/2
+                meas.append({'id': last_id+1, 'node': None, 'line': -8, 'type': 'P', 'value': value, 'std': std})
+                value = meas[24]['value']/2
+                std = meas[24]['std']/2
+                meas.append({'id': last_id+2, 'node': None, 'line': -2, 'type': 'P', 'value': value, 'std': std})
+            
+                     
             self.nodes = self.add_nodes(nodes)                                      
             self.lines = self.add_lines(lines, self.nodes)   
             self.n = len(self.nodes)*2 - 1
