@@ -238,13 +238,59 @@ Q = np.array([list(res_withMT['Q'][index]) for index in range(len(res_withMT['Q'
 Obs = Q[meas_attacked,:]
 
         
-        
-        
-        
-        
-        
-        
-        
-    
-    
-    
+# Evaluating identification performance
+TP, TN, FP, FN = 0, 0, 0, 0
+for i in range(len(net.meas)):
+   is_attacked = i in meas_attacked # Attacked?               
+   is_identified = i in ident_withMT # Well-identified?
+              
+   # Classify the measurement and append to the appropriate list
+   if is_attacked and is_identified:
+       TP += 1
+   elif not is_attacked and not is_identified:
+       TN += 1
+   elif not is_attacked and is_identified:
+       FP += 1
+   elif is_attacked and not is_identified:
+       FN += 1
+
+z_estimada = [net_withMT.meas[idx].h() for idx in meas_attacked]
+z_exacta = [net_clean.meas[idx].h() for idx in meas_attacked]       
+Precision = TP/(TP+FP) if TP + FP !=0 else 0
+Recall = TP/(TP+FN) if TP + FN !=0 else 0
+Accuracy = (TP+TN)/(TP+TN+FP+FN)
+F1 = 2*Precision*Recall/(Precision + Recall) if Precision + Recall !=0 else 0
+z = np.linalg.norm(np.array(z_estimada) - np.array(z_exacta), 2)/len(z_estimada)
+x_clean = sol_clean['solution'][-1]
+x_Huber = res_withMT['solution'][-1]
+norm2 = np.linalg.norm(x_clean - x_Huber, 2)/len(x_clean)
+norminf = np.linalg.norm(x_clean - x_Huber, np.inf)
+
+print('')
+print(f'Precision: {Precision*100:.2f} %')
+print(f'Recall: {Recall*100:.2f} %')
+print(f'Accuracy: {Accuracy*100:.2f} %')
+print(f'F1: {F1*100:.2f} %')
+print(f'z: {z*100:.2f} %')
+print(f'norm2: {norm2*100:.2f} %')
+print(f'norminf: {norminf*100:.2f} %')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

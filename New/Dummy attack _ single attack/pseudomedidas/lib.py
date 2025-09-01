@@ -901,6 +901,123 @@ def system_measurements(file, Nodes, Lines, add_noise = False, corrientes = True
     return Meas
 
 
+def detection(n_simus, names, net_base, bandas):
+    # Data
+    lmb_value = 2.5
+    num_attacks = 1
+        
+    # Results
+    count = {        
+        'P': {'Detection': []},
+        'Q': {'Detection': []},
+        'U': {'Detection': []},
+        'I': {'Detection': []},
+    } 
+    
+    # Classification of the measurements to be attacked
+    names_P = [names[index] for index in range(len(names)) if names[index].startswith('P_LV')]
+    names_Q = [names[index] for index in range(len(names)) if names[index].startswith('Q_LV')]
+    names_U = [names[index] for index in range(len(names)) if names[index].startswith('U_LV')] 
+    names_I = [names[index] for index in range(len(names)) if names[index].startswith('I_LV')] 
+    
+    # For each type of attack (P, Q o U) we perform "n_simus" attacks   
+    for names_ataque in [names_P, names_Q, names_U, names_I]:      
+        for _ in range(n_simus):     
+            net = copy.deepcopy(net_base)
+            
+            # Solving state estimation without attacks
+            Results_clean = net.state_estimation(tol = 1e-4, niter = 50, Huber = True, lmb = lmb_value, rn = False)
+            x_clean = Results_clean['solution'][-1][14:]
+            
+            # Random choice of the measurement to be attacked             
+            random_entries = random.sample(names_ataque, num_attacks)
+            
+            # We establish the amplitude of the attack based on "bandas"
+            nums = []
+            for ataque in random_entries:
+                if ataque.startswith('P'):
+                    num = names.index(ataque)
+                    magnitud = bandas['P'][0] + np.random.rand()*bandas['P'][1]
+                if ataque.startswith('Q'):
+                    num = names.index(ataque)
+                    magnitud = bandas['Q'][0] + np.random.rand()*bandas['Q'][1]
+                if ataque.startswith('U'):
+                    num = names.index(ataque)
+                    magnitud = bandas['U'][0] + np.random.rand()*bandas['U'][1]                    
+                if ataque.startswith('I'):
+                    num = names.index(ataque)
+                    magnitud = bandas['I'][0] + np.random.rand()*bandas['I'][1]
+                z_exacta = net.meas[num].value
+                net.meas[num].value = magnitud*net.meas[num].value                
+                nums.append(num)
+                
+            # Running Huber state estimator
+            Results_Huber = net.state_estimation(tol = 1e-4, niter = 50, Huber = True, lmb = lmb_value, rn = False)
+            x_Huber = Results_Huber['solution'][-1][14:]
+            z_estimada = net.meas[num].h()
+            
+            # Identification of the attack
+            Q = np.array([list(Results_Huber['Q'][index]) for index in range(len(Results_Huber['Q']))]).T 
+            n_cols = 3
+            if Q.shape[1] < n_cols:
+                result_rows = []  
+            else:
+                final_value_condition = Q[:, -1] < 1       
+                
+                def is_decreasing(row):
+                    last_values = row[-n_cols:]
+                    return np.all(np.diff(last_values) < 0)                
+                
+                filtered_rows = Q[final_value_condition]
+                if len(filtered_rows) > 0:
+                    decreasing_condition = np.array([is_decreasing(row) for row in filtered_rows])                                    
+                    result_rows = np.where(final_value_condition)[0][decreasing_condition].tolist()       
+                else:
+                    result_rows = []  
+                    
+             # Clasificamos la identificación            
+            TP, TN, FP, FN = 0, 0, 0, 0
+            for i in range(len(net.meas)):
+               is_attacked = i in nums # Attacked?               
+               is_identified = i in result_rows # Well-identified?
+               
+               # value = Results_Huber['std_sol'][i]*100/net.meas[i].std # std
+               
+               # Classify the measurement and append to the appropriate list
+               if is_attacked and is_identified:
+                   TP += 1
+               elif not is_attacked and not is_identified:
+                   TN += 1
+               elif not is_attacked and is_identified:
+                   FP += 1
+               elif is_attacked and not is_identified:
+                   FN += 1
+                   
+            if TP != 0 or FP != 0:
+                if ataque.startswith('P'):
+                    count['P']['Detection'].append(True)
+                if ataque.startswith('Q'):
+                    count['Q']['Detection'].append(True)
+                if ataque.startswith('U'):
+                    count['U']['Detection'].append(True)    
+                if ataque.startswith('I'):
+                    count['I']['Detection'].append(True)
+            else:
+                if ataque.startswith('P'):
+                    count['P']['Detection'].append(False)
+                if ataque.startswith('Q'):
+                    count['Q']['Detection'].append(False)
+                if ataque.startswith('U'):
+                    count['U']['Detection'].append(False)    
+                if ataque.startswith('I'):
+                    count['I']['Detection'].append(False)
+        
+     
+             
+    return count
+
+
+
 def identification_fun(n_simus, names, net_base, bandas):
     # Data
     lmb_value = 2.5

@@ -1341,3 +1341,109 @@ def n_attacks(lambda_value, n_simus, names, net_base, range_n_att, bandas):
             
     return count
             
+    
+def detection(lambda_value, n_simus, names, net_base, range_n_att, bandas):
+    
+    count = {
+        str(lambda_value): {
+            str(item): {
+                'Detection': []
+                }
+            for item in range_n_att
+        }
+    }   
+    
+    for num_attacks in range_n_att:    
+       
+        # Nombre de las medidas a las que se puede atacar
+        names_P = [names[index] for index in range(len(names)) if names[index].startswith('P_LV')]
+        names_Q = [names[index] for index in range(len(names)) if names[index].startswith('Q_LV')]
+        names_U = [names[index] for index in range(len(names)) if names[index].startswith('U_LV')]    
+        names_ataque = names_P + names_Q + names_U
+          
+        for _ in range(n_simus):     
+            # Hacemos una copia de red
+            net = copy.deepcopy(net_base)
+            
+            # Se escoge aleatoriamente a la medida que atacar (un único ataque)              
+            random_entries = random.sample(names_ataque, num_attacks)
+            
+            # Se establece la amplitud del ataque (+-20% en P y Q, +-2% en U)
+            nums = []
+            for ataque in random_entries:
+                if ataque.startswith('P'):
+                    num = names.index(ataque)
+                    magnitud1 = np.random.uniform(bandas['P'][0][0], bandas['P'][0][1])
+                    magnitud2 = np.random.uniform(bandas['P'][1][0], bandas['P'][1][1])
+                    magnitud = random.sample([magnitud1, magnitud2], 1)
+                if ataque.startswith('Q'):
+                    num = names.index(ataque)
+                    magnitud1 = np.random.uniform(bandas['Q'][0][0], bandas['Q'][0][1])
+                    magnitud2 = np.random.uniform(bandas['Q'][1][0], bandas['Q'][1][1])
+                    magnitud = random.sample([magnitud1, magnitud2], 1)
+                if ataque.startswith('U'):
+                    num = names.index(ataque)
+                    magnitud1 = np.random.uniform(bandas['U'][0][0], bandas['U'][0][1])
+                    magnitud2 = np.random.uniform(bandas['U'][1][0], bandas['U'][1][1])
+                    magnitud = random.sample([magnitud1, magnitud2], 1)
+                net.meas[num].value = magnitud[0]*net.meas[num].value
+                nums.append(num)
+                
+            # Corremos el estimador de estado
+            Results_Huber = net.state_estimation(tol = 1e-4, niter = 50, Huber = True, lmb = lambda_value, rn = False)
+            
+            # Observamos las tendencias de Q
+            Q = np.array([list(Results_Huber['Q'][index]) for index in range(len(Results_Huber['Q']))]).T
+            
+            # Tratamos de identificar el ciber ataque
+            n_cols = 3
+            try:
+                if Q.shape[1] < n_cols:
+                    result_rows = []  
+                else:
+                    final_value_condition = Q[:, -1] < 1       
+                    
+                    def is_decreasing(row):
+                        last_values = row[-n_cols:]
+                        return np.all(np.diff(last_values) < 0)                
+                    
+                    filtered_rows = Q[final_value_condition]
+                    if len(filtered_rows) > 0:
+                        decreasing_condition = np.array([is_decreasing(row) for row in filtered_rows])                                    
+                        result_rows = np.where(final_value_condition)[0][decreasing_condition].tolist()       
+                    else:
+                        result_rows = []  
+            except:
+                result_rows = []  
+                    
+            
+            # Clasificamos la identificación
+            res_kpi = count[str(lambda_value)][str(num_attacks)]           
+            
+            TP = 0  # True Positive: Medidas correctamente identificadas como atacadas
+            TN = 0  # True Negative: Medidas correctamente identificadas como no atacadas
+            FP = 0  # False Positive: Medidas incorrectamente identificadas como atacadas
+            FN = 0  # False Negative: Medidas incorrectamente identificadas como no atacadas
+            
+            result_set = set(result_rows)  
+            true_set = set(nums)         
+            for measure in result_set:
+                if measure in true_set:
+                    TP += 1  # La medida está en ambas listas -> True Positive
+                else:
+                    FP += 1  # La medida está solo en result_set -> False Positive
+            for measure in range(len(net.meas)):  
+                if measure not in true_set and measure not in result_set:
+                    TN += 1  # La medida no está ni en true_set ni en result_set -> True Negative
+                elif measure in true_set and measure not in result_set:
+                    FN += 1  # La medida está en true_set pero no en result_set -> False Negative                        
+            
+            
+            # Contamos
+            if TP != 0 or FP != 0:
+                count[str(lambda_value)][str(num_attacks)]['Detection'].append(True)
+            else:
+                count[str(lambda_value)][str(num_attacks)]['Detection'].append(False)
+            
+    return count
+            

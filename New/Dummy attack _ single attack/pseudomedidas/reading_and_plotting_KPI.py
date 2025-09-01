@@ -5,7 +5,7 @@ from pydae import plot_tools
 
 # Initial parameters
 cosphi = '090pos'
-medida = 'I'
+medida = 'P'
 
 colores = plot_tools.set_style(plt)
 
@@ -138,9 +138,9 @@ for col_idx, category in enumerate(categories):
         x_positions = np.arange(len(bands))
         
         # Plot bars for P, Q, U, I
-        ax.bar(x_positions - bar_width, sinMT_values, width=bar_width, label='w/o MT meas.', color=colores[0])
-        ax.bar(x_positions, conMT_values, width=bar_width, label='with MT meas.', color=colores[1])
-        ax.bar(x_positions + bar_width, sinMT_conPSM_values, width=bar_width, label='with MT psm.', color=colores[2])        
+        ax.bar(x_positions - bar_width, sinMT_values, width=bar_width, label='w/o MV meas.', color=colores[0])
+        ax.bar(x_positions, conMT_values, width=bar_width, label='with MV meas.', color=colores[1])
+        ax.bar(x_positions + bar_width, sinMT_conPSM_values, width=bar_width, label='with MV psm.', color=colores[2])        
        
         ax.grid(True)
         
@@ -157,9 +157,8 @@ axes[5,0].set_ylabel('$|\,z-\hat{z}\,|$')
 fig.align_ylabels(axes)
 plt.tight_layout(rect=[0, 0, 1, 0.95])
 plt.show()
-plt.savefig('figs/bands_inversor_' + cosphi + '_' + medida + '.pdf')
-plt.savefig('figs/bands_inversor_' + cosphi + '_' + medida + '.png')
-plt.close()
+plt.savefig('figs/identification_' + cosphi + '_' + medida + '.pdf')
+# plt.close()
 
 
 

@@ -889,5 +889,130 @@ def identification_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base):
                     count[str(lmb_value)]['U'][Res] += 1
     return count
             
+       
+def detection_fun(lmb_min, lmb_max, lmb_num, n_simus, names, net_base):
+    
+    # Establecemos el rango de valores de lambda
+    lmb_range = np.linspace(lmb_min, lmb_max, lmb_num)
+    num_attacks = 1
+    # Diccionario de resultados
+    count = {
+        str(lmb): {
+            'P': {'Detection': []},
+            'Q': {'Detection': []},
+            'U': {'Detection': []},
+        }
+        for lmb in lmb_range
+    }  
+    
+    # Nombre de las medidas a las que se puede atacar
+    names_P = [names[index] for index in range(len(names)) if names[index].startswith('P_LV')]
+    names_Q = [names[index] for index in range(len(names)) if names[index].startswith('Q_LV')]
+    names_U = [names[index] for index in range(len(names)) if names[index].startswith('U_LV')]    
+    
+    # Para cada valor de lambda y cada tipo de ataque (P, Q o U) hacemos "n_simus" ataques
+    for lmb_value in lmb_range:
+        for names_ataque in [names_P, names_Q, names_U]:            
+            for _ in range(n_simus):     
+                # Hacemos una copia de red
+                net = copy.deepcopy(net_base)
+                
+                # Se escoge aleatoriamente a la medida que atacar (un único ataque)              
+                random_entries = random.sample(names_ataque, num_attacks)
+                
+                # Se establece la amplitud del ataque (+-20% en P y Q, +-2% en U)
+                nums = []
+                for ataque in random_entries:
+                    if ataque.startswith('P'):
+                        num = names.index(ataque)
+                        magnitud = 0.8 + np.random.rand()*0.4
+                    if ataque.startswith('Q'):
+                        num = names.index(ataque)
+                        magnitud = 0.8 + np.random.rand()*0.4
+                    if ataque.startswith('U'):
+                        num = names.index(ataque)
+                        magnitud = 0.98 + np.random.rand()*0.04
+                    net.meas[num].value = magnitud*net.meas[num].value
+                    nums.append(num)
+                    
+                # Corremos el estimador de estado
+                Results_Huber = net.state_estimation(tol = 1e-4, niter = 50, Huber = True, lmb = lmb_value, rn = False)
+                
+                # Observamos las tendencias de Q
+                Q = np.array([list(Results_Huber['Q'][index]) for index in range(len(Results_Huber['Q']))]).T
+                
+                # Tratamos de identificar el ciber ataque
+                n_cols = 3
+                if Q.shape[1] < n_cols:
+                    result_rows = []  
+                else:
+                    final_value_condition = Q[:, -1] < 1       
+                    
+                    def is_decreasing(row):
+                        last_values = row[-n_cols:]
+                        return np.all(np.diff(last_values) < 0)                
+                    
+                    filtered_rows = Q[final_value_condition]
+                    if len(filtered_rows) > 0:
+                        decreasing_condition = np.array([is_decreasing(row) for row in filtered_rows])                                    
+                        result_rows = np.where(final_value_condition)[0][decreasing_condition].tolist()       
+                    else:
+                        result_rows = []  
+                        
+                
+                # Clasificamos la identificación
+                if ataque.startswith('P'):
+                    res_kpi = count[str(lmb_value)]['P']
+                if ataque.startswith('Q'):
+                    res_kpi = count[str(lmb_value)]['Q']
+                if ataque.startswith('U'):
+                    res_kpi = count[str(lmb_value)]['U']
+                
+                if num in result_rows:                           
+                    if len(result_rows) == 1:
+                        Res = '0' # 0 detecta   
+                        TP = 1
+                        TN = len(net.meas) - 1
+                        FN = 0
+                        FP = 0
+                    else:
+                        Res = '1' # 1 detecta y detecta alguno más incorrecto  
+                        TP = 1
+                        FN = len(result_rows) - 1
+                        TN = len(net.meas) - 1 - (len(result_rows) - 1) 
+                        FP = 0
+                else:
+                    if len(result_rows) == 0:            
+                        Res = '3' # 3 no detecta nada
+                        FP = 1
+                        TN = len(net.meas) - 1
+                        FN = 0
+                        TP = 0          
+                    else:     
+                        Res = '2' # 2 detecta incorrecto
+                        FN = len(result_rows)
+                        TN = (len(net.meas) - len(result_rows)) - 1
+                        FP = 1
+                        TP = 0 
+                
+                
+
+                # Contamos
+                if Res == '0' or Res == '1' or Res == '2':
+                    if ataque.startswith('P'):
+                        count[str(lmb_value)]['P']['Detection'].append(True)
+                    if ataque.startswith('Q'):
+                        count[str(lmb_value)]['Q']['Detection'].append(True)
+                    if ataque.startswith('U'):
+                        count[str(lmb_value)]['U']['Detection'].append(True)
+                else:
+                    if ataque.startswith('P'):
+                        count[str(lmb_value)]['P']['Detection'].append(False)
+                    if ataque.startswith('Q'):
+                        count[str(lmb_value)]['Q']['Detection'].append(False)
+                    if ataque.startswith('U'):
+                        count[str(lmb_value)]['U']['Detection'].append(False)
+    return count
+            
 
     
